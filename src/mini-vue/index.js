@@ -23,6 +23,11 @@ function assignProperties(src, dest) {
 
 function MiniVue(options) {
   const vm = this;
+  // 简单处理prop
+  // TODO: 还没有引入template, 子组件等，所以目前prop实际上是只读的
+  // const props = options.props || {};
+  // assignProperties(props, vm);
+
   // 简单处理data
   const data = options.data ? options.data.call(vm) : {};
   observe(data);
@@ -62,7 +67,7 @@ function MiniVue(options) {
       key.split('.').forEach(k => val = val[k]);
       return val;
     }
-    new Watcher(vm, getter, (...args) => method.apply(vm, args)).getVal();
+    new Watcher(vm, getter, (...args) => method.apply(vm, args));
   });
 }
 

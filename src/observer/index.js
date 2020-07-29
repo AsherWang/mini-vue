@@ -29,6 +29,7 @@ export class Watcher {  // 用以收集依赖,被vm使用
     this.__value = null;
     this.dirty = true;
     this.cb = cb; // 值有变化之后需要执行的回调函数
+    this.cb && this.getVal(); // 有回调函数的，先收集一波依赖
   }
   get value() {
     this.dep.depend();
