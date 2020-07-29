@@ -1,0 +1,32 @@
+{
+  "name": "mini-vue",
+  "version": "0.0.1",
+  "description": "mini vue in concept",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "build": "rollup index.js --file dist/mini-vue.js --format umd --name 'miniVue'",
+    "test": "npm run build && node test/test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AsherWang/mini-vue.git"
+  },
+  "keywords": [
+    "mini",
+    "vue",
+    "learn"
+  ],
+  "author": "ash",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AsherWang/mini-vue/issues"
+  },
+  "homepage": "https://github.com/AsherWang/mini-vue#readme",
+  "devDependencies": {
+    "eslint": "^7.5.0",
+    "eslint-config-airbnb-base": "^14.2.0",
+    "eslint-plugin-import": "^2.22.0",
+    "rollup": "^2.23.0"
+  }
+}
