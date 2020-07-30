@@ -66,6 +66,9 @@ function plantDep(obj, key, ctx) { // 种下依赖, vue中的defineReactive
       return val;
     },
     set(nv) {
+      if(nv === val){
+        return;
+      }
       valSetter.call(ctx || obj, nv);
       dep.notify();
     },

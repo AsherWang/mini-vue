@@ -1,4 +1,6 @@
 import { observe, Watcher } from "../observer/index";
+import walk from "../observer/walk";
+import { diff, applyDiff } from '../vdom/index';
 
 function defineProperty(vm, key, opt) {
   Object.defineProperty(vm, key, {
@@ -29,7 +31,8 @@ function MiniVue(options) {
   // assignProperties(props, vm);
 
   // 简单处理data
-  const data = options.data ? options.data.call(vm) : {};
+  let data = options.data || {};
+  data = typeof options.data === 'function' ? options.data.call(vm) : data;
   observe(data);
   assignProperties(data, vm);
 
@@ -69,6 +72,40 @@ function MiniVue(options) {
     }
     new Watcher(vm, getter, (...args) => method.apply(vm, args));
   });
+
+  // 简单处理el
+  if(options.el){
+    if(typeof options.el === 'string'){
+      vm.$el = document.querySelector(options.el);
+    }else{
+      vm.$el = options.el;
+    }
+  }
+
+  // 处理render
+  // 触发重绘的方式有： props改变， data改变，computed改变，
+  vm.$render = options.render || null;
+  vm.render = () => {
+    if(!vm.$render)return null;
+    vm.$vdom = vm.$render.call(vm);
+    if(vm.$preVdom){
+      const result = diff(vm.$preVdom, this.$vdom);
+      // console.log('diff result', result);
+      applyDiff(vm.$preVdom, result);
+    } else {
+      vm.$el.firstElementChild && vm.$el.firstElementChild.remove();
+      vm.$el.appendChild(vm.$vdom.render());
+      vm.$preVdom = vm.$vdom;
+    }
+  }
+
+  vm.render(); // 渲染
+
+  // 重绘触发
+  vm.renderWatcher = new Watcher(vm,function walkUpsidedown(){
+    walk(data);
+    walk(computedData);
+  }, vm.render);
 }
 
 export default MiniVue;

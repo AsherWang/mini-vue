@@ -5,8 +5,9 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "build": "rollup index.js --file dist/mini-vue.js --format umd --name 'miniVue'",
-    "test": "npm run build && node test/test.js"
+    "build": "rollup -c rollup.config.js",
+    "dev": "rollup -c rollup.config.js -w",
+    "test": "npm run build && node dist/test/test.js"
   },
   "repository": {
     "type": "git",
@@ -27,6 +28,8 @@
     "eslint": "^7.5.0",
     "eslint-config-airbnb-base": "^14.2.0",
     "eslint-plugin-import": "^2.22.0",
-    "rollup": "^2.23.0"
+    "rollup": "^2.23.0",
+    "rollup-plugin-serve": "^1.0.3",
+    "rollup-plugin-terser": "^6.1.0"
   }
 }
