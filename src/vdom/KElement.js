@@ -66,7 +66,12 @@ class _Element {
       }
       this.$el.addEventListener(evtName, value);
     } else {
-      this.$el.setAttribute(name, value);
+      // 应该还有其他属性需要直接赋值而不是使用setAttr
+      if(name === 'value'){
+        this.$el.value= value;
+      }else{
+        this.$el.setAttribute(name, value);
+      }
     }
   }
 }

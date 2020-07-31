@@ -17,10 +17,11 @@ const vm = new MiniVue({
   el: "#app",
   data() {
     return {
-      name: "ash",
-      age: 23,
+      name: "MiniVue",
+      btnClickCount: 0,
+      age: 0,
       detail: {
-        job: "IT",
+        job: "DEV",
       },
       hobbies: ["c", "t", "r"],
     };
@@ -37,6 +38,10 @@ const vm = new MiniVue({
   methods: {
     growOld(num = 1) {
       this.age += num;
+    },
+    onBtnClick() {
+      console.log("btn clicked!");
+      this.btnClickCount += 1;
     },
   },
   watch: {
@@ -55,8 +60,9 @@ const vm = new MiniVue({
       El("li", { class: "item" }, [`age: ${age}`]),
     ];
     return El("div", { class: "virtual-container" }, [
-      El("h3", {}, ["VIRTUAL DOM"]),
-      El("ul", { class: "marginLeft10" }, ulChildren),
+      El("h3", {}, [name]),
+      El("button", { "@click": this.onBtnClick }, [`Click Me : ${this.btnClickCount}`]),
+      El("ul", { class: "margin-left-10" }, ulChildren),
     ]);
   },
 });
@@ -78,8 +84,8 @@ console.log(vm.infoplus); // c:33 - singer:c,t,rap,l-plus
 1. `npm i`  
 1. `npm run dev`  
 1. 打开浏览器 http://localhost:10001/
+
 ### TODOS
-- 事件绑定
 - 解析template, 啊。。
 - 自定义组件
 
