@@ -28,4 +28,13 @@ export default [
       },
     ],
   },
+  {
+    input: "test/test.template.js",
+    output: [
+      {
+        file: "test/dist/test.template.js",
+        format: "umd",
+      },
+    ],
+  },
 ];

@@ -65,8 +65,9 @@ function testMiniVue() {
             }),
           ]),
         ]),
+        El("li", { class: "item" }, ['made in China']),
         El("li", { class: "item" }, ['made by ash']),
-        El("li", { class: "item" }, ['made for learning and fun']),
+        El("li", { class: "item" }, ['made for fun']),
       ];
       return El("div", { class: "virtual-container" }, [
         El("h3", {}, [name]),
