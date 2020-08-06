@@ -1,15 +1,43 @@
+import { KElement as El } from "../vdom/index";
+import directives from "./directives";
+import { calcTextContent } from "./expr";
+
 class TplTag {
-  constructor(name, attrs = {}, isRoot = false) {
-    this.isRoot = isRoot;
+  constructor(name, attrs = {}) {
+    this.isRoot = false;
     this.name = name; // tagname
     this.attrs = attrs; // 可能会分几类
     this.children = [];
-    this.close = false; // 闭合了么
+    // this.close = false; // 闭合了么
   }
   addAttr(key, value) {
     // 重复就覆盖
     // 或者这里警告一下
     this.attrs[key] = value;
+  }
+
+  render(vm) {
+    if (this.name === "root") {
+      // 取child的第一个
+      return this.children.length ? this.children[0].render(vm) : null;
+    }
+    if (this.name === "text") {
+      return calcTextContent(vm, this.attrs.content);
+    }
+    const attrs = {};
+    Object.keys(this.attrs).forEach((name) => {
+      const val = this.attrs[name];
+      for (const handler of directives) {
+        if (handler.call(vm, attrs, name, val)) {
+          break;
+        }
+      }
+    });
+    return El(
+      this.name,
+      attrs,
+      this.children.map((i) => i.render(vm))
+    );
   }
 }
 
@@ -38,7 +66,7 @@ function getTillNextCh(index, str, ch = "") {
 function doCompile(templateStr) {
   const elStack = [];
   // 根元素入栈
-  const root = new TplTag("root", {}, true);
+  const root = new TplTag("root", {});
   elStack.push(root);
 
   if (!templateStr) return root.children;
@@ -46,10 +74,13 @@ function doCompile(templateStr) {
   let idx = 0;
   let state = 0; // 准备收新tag
   let stackTop = root;
-  let tempAttrName = "";
-  let tempAttrValue = "";
-  let tempAttrValueSeparator = "";
-  let tempAttrValueASlash = 0;
+  const tmpAttr = {
+    name: "",
+    value: "",
+    separator: "",
+    slash: 0,
+  };
+
   // state: 0 准备新收child 或者准备接收闭合标签
   // state: 1 准备接收tag attr 或者接收自闭标签
   // state: 11 接收tag attr value
@@ -58,7 +89,7 @@ function doCompile(templateStr) {
   while (1) {
     if (state === 0) {
       if (str[idx] === "<" && str[idx + 1] === "/") {
-        const [tagname, nextIdx] = getTillMatch(idx + 2, str, /^[^>]+/);
+        const [, nextIdx] = getTillMatch(idx + 2, str, /^[^>]+/);
         idx = nextIdx + 1;
         // console.log("close tag", tagname, idx);
       } else if (str[idx] === "<") {
@@ -93,49 +124,52 @@ function doCompile(templateStr) {
         const ret = getTillMatch(idx, str, /^[^=]+/);
         // console.log("ret", ret, idx, state);
         const [attrName, nextIdx] = ret;
-        tempAttrName = attrName;
+        tmpAttr.name = attrName;
         idx = nextIdx + 1;
         state = 11;
       }
     } else if (state === 11) {
       if (["'", '"'].includes(str[idx])) {
-        tempAttrValueSeparator = str[idx];
+        tmpAttr.separator = str[idx];
         state = 111;
         idx += 1;
       } else {
         throw new Error(`value seperator not valid in ${idx}`);
       }
     } else if (state === 111) {
-      // value内容只要注意符号问题就行了，只要不是当前的tempAttrValueSeparator，而且没有反斜杠转义
+      // value内容只要注意符号问题就行了，只要不是当前的tmpAttr.separator，而且没有反斜杠转义
       if (str[idx] === "\\") {
-        tempAttrValueASlash = 1 - tempAttrValueASlash;
+        tmpAttr.slash = 1 - tmpAttr.slash;
         idx += 1;
-        tempAttrValue += str[idx];
-      } else if (str[idx] === tempAttrValueSeparator) {
-        if (tempAttrValueASlash) {
-          tempAttrValueASlash = 0;
+        tmpAttr.value += str[idx];
+      } else if (str[idx] === tmpAttr.separator) {
+        if (tmpAttr.slash) {
+          tmpAttr.slash = 0;
           idx += 1;
-          tempAttrValue += str[idx];
+          tmpAttr.value += str[idx];
         } else {
           // 完事
-          stackTop.addAttr(tempAttrName, tempAttrValue);
-          tempAttrName = "";
-          tempAttrValue = "";
-          tempAttrValueASlash = 0;
-          tempAttrValueSeparator = "";
+          stackTop.addAttr(tmpAttr.name, tmpAttr.value);
+          tmpAttr.name = "";
+          tmpAttr.value = "";
+          tmpAttr.slash = 0;
+          tmpAttr.separator = "";
           state = 1;
           idx += 1;
         }
       } else {
-        tempAttrValue += str[idx];
+        tmpAttr.value += str[idx];
         idx += 1;
       }
     }
     if (idx >= str.length) {
+      if (state !== 0) {
+        throw new Error("not normal exit state", state);
+      }
       break;
     }
   }
-  return root.children;
+  return root;
 }
 
 /** 解析template
@@ -148,6 +182,6 @@ export default function compile(str) {
     return doCompile(str);
   } catch (error) {
     console.log("err when compile template", error);
-    return [];
+    return null;
   }
 }

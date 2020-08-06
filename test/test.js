@@ -1,5 +1,4 @@
 import MiniVue from "../src/mini-vue/index";
-import { KElement as El } from "../src/vdom/index";
 
 function testMiniVue() {
   const vm = new MiniVue({
@@ -41,51 +40,52 @@ function testMiniVue() {
         console.log(`detail.job change from ${pv} to ${nv}`);
       },
     },
-    render() {
-      const name = this.name;
-      const age = this.age;
-      const ulChildren = [
-        El("li", { class: "item" }, [`name: ${name}`]),
-        El("li", { class: "item" }, [
-          El("span", {}, [`age: ${age}`]),
-          El("button", { "@click": this.growOld, "style": 'margin-left:10px' }, ["grow"]),
-        ]),
-        El("li", { class: "item" }, [
-          El("div", {}, [
-            El("span", {}, ["nick: "]),
-            El("span", {}, [this.nickName]),
-          ]),
-        ]),
-        El("li", { class: "item" }, [
-          El("div", {}, [
-            El("span", {}, ["edit nick: "]),
-            El("input", {
-              value: this.nickName,
-              "@change": this.onValueChange,
-            }),
-          ]),
-        ]),
-        El("li", { class: "item" }, ['made in China']),
-        El("li", { class: "item" }, ['made by ash']),
-        El("li", { class: "item" }, ['made for fun']),
-      ];
-      return El("div", { class: "virtual-container" }, [
-        El("h3", {}, [name]),
-        El("ul", { class: "margin-left-10" }, ulChildren),
-      ]);
-    },
+    template: '<div name="asd" :title="age">{{name}}</div>',
+    // render() {
+    //   const name = this.name;
+    //   const age = this.age;
+    //   const ulChildren = [
+    //     El("li", { class: "item" }, [`name: ${name}`]),
+    //     El("li", { class: "item" }, [
+    //       El("span", {}, [`age: ${age}`]),
+    //       El("button", { "@click": this.growOld, "style": 'margin-left:10px' }, ["grow"]),
+    //     ]),
+    //     El("li", { class: "item" }, [
+    //       El("div", {}, [
+    //         El("span", {}, ["nick: "]),
+    //         El("span", {}, [this.nickName]),
+    //       ]),
+    //     ]),
+    //     El("li", { class: "item" }, [
+    //       El("div", {}, [
+    //         El("span", {}, ["edit nick: "]),
+    //         El("input", {
+    //           value: this.nickName,
+    //           "@change": this.onValueChange,
+    //         }),
+    //       ]),
+    //     ]),
+    //     El("li", { class: "item" }, ['made in China']),
+    //     El("li", { class: "item" }, ['made by ash']),
+    //     El("li", { class: "item" }, ['made for fun']),
+    //   ];
+    //   return El("div", { class: "virtual-container" }, [
+    //     El("h3", {}, [name]),
+    //     El("ul", { class: "margin-left-10" }, ulChildren),
+    //   ]);
+    // },
   });
 
-  console.log(vm.info);
-  console.log(vm.infoplus);
+  // console.log(vm.info);
+  // console.log(vm.infoplus);
 
-  vm.growOld();
-  vm.detail.job = "singer";
-  vm.hobbies[2] = "rap";
-  vm.hobbies.push("l");
+  // vm.growOld();
+  // vm.detail.job = "singer";
+  // vm.hobbies[2] = "rap";
+  // vm.hobbies.push("l");
 
-  console.log(vm.info);
-  console.log(vm.infoplus);
+  // console.log(vm.info);
+  // console.log(vm.infoplus);
 
   window.vm = vm; // for test in browser console
 }

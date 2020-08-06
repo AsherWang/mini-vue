@@ -1,6 +1,7 @@
 import { observe, Watcher } from "../observer/index";
 import walk from "../observer/walk";
-import { diff, applyDiff } from '../vdom/index';
+import { diff, applyDiff } from "../vdom/index";
+import compileTemplate from "../template/index";
 
 function defineProperty(vm, key, opt) {
   Object.defineProperty(vm, key, {
@@ -32,7 +33,7 @@ function MiniVue(options) {
 
   // 简单处理data
   let data = options.data || {};
-  data = typeof options.data === 'function' ? options.data.call(vm) : data;
+  data = typeof options.data === "function" ? options.data.call(vm) : data;
   observe(data);
   assignProperties(data, vm);
 
@@ -47,8 +48,8 @@ function MiniVue(options) {
         return watcher.value;
       },
       set: function setter(nv) {
-        console.warn('cannot set computed value with', nv);
-      }
+        console.warn("cannot set computed value with", nv);
+      },
     });
   });
   assignProperties(computedData, vm);
@@ -67,45 +68,60 @@ function MiniVue(options) {
     const method = watch[key];
     const getter = () => {
       let val = vm;
-      key.split('.').forEach(k => val = val[k]);
+      key.split(".").forEach((k) => (val = val[k]));
       return val;
-    }
+    };
     new Watcher(vm, getter, (...args) => method.apply(vm, args));
   });
 
   // 简单处理el
-  if(options.el){
-    if(typeof options.el === 'string'){
+  if (options.el) {
+    if (typeof options.el === "string") {
       vm.$el = document.querySelector(options.el);
-    }else{
+    } else {
       vm.$el = options.el;
     }
   }
 
+  // 解析模板
+  const elTree = compileTemplate(options.template || "");
+
+  // 化为render函数
+  vm.$render = () => {
+    return elTree.render(vm);
+  };
+
   // 处理render
   // 触发重绘的方式有： props改变， data改变，computed改变，
-  vm.$render = options.render || null;
+  // vm.$render = options.render || null;
   vm.render = () => {
-    if(!vm.$render)return null;
+    if (!vm.$render) return null;
     vm.$vdom = vm.$render.call(vm);
-    if(vm.$preVdom){
+    // console.log('vm.$vdom',vm.$vdom);
+    if (vm.$preVdom) {
       const result = diff(vm.$preVdom, this.$vdom);
       // console.log('diff result', result);
       applyDiff(vm.$preVdom, result);
     } else {
       vm.$el.firstElementChild && vm.$el.firstElementChild.remove();
-      vm.$el.appendChild(vm.$vdom.render());
+      vm.$el.appendChild(vm.$vdom.render())
+
+      // vm.$el.replaceWith(vm.$vdom.render());
       vm.$preVdom = vm.$vdom;
     }
-  }
+  };
 
   vm.render(); // 渲染
 
   // 重绘触发
-  vm.renderWatcher = new Watcher(vm,function walkUpsidedown(){
-    walk(data);
-    walk(computedData);
-  }, vm.render);
+  vm.renderWatcher = new Watcher(
+    vm,
+    function walkUpsidedown() {
+      walk(data);
+      walk(computedData);
+    },
+    vm.render
+  );
 }
 
 export default MiniVue;
