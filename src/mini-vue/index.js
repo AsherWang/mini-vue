@@ -35,6 +35,7 @@ function MiniVue(options) {
   let data = options.data || {};
   data = typeof options.data === "function" ? options.data.call(vm) : data;
   observe(data);
+  vm.$data = data;
   assignProperties(data, vm);
 
   // 简单处理computed
@@ -99,6 +100,7 @@ function MiniVue(options) {
     vm.$vdom = vm.$render.call(vm);
     // console.log('vm.$vdom',vm.$vdom);
     if (vm.$preVdom) {
+      // console.log(vm.$preVdom,vm.$vdom)
       const result = diff(vm.$preVdom, this.$vdom);
       // console.log('diff result', result);
       applyDiff(vm.$preVdom, result);

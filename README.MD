@@ -2,8 +2,10 @@
 读Vue2源码之后尝试自己做一个简单(粗糙)实现  
 复习 & 梳理结构  
 基本实现 `data`, `computed` ,`methods`, `watch`, `template`  
-指令 `v-bind`, `v-on`
+指令 `v-bind`, `v-on`, `v-show`
 
+### 在线预览
+[点我点我](https://asherwang.github.io/mini-vue/)
 
 ### 目录结构
 | 路径 | 描述 | 代码/行 |  
@@ -38,6 +40,9 @@ const vm = new MiniVue({
     infoplus() {
       return this.info + "-plus";
     },
+    dataStr(){
+      return JSON.stringfy(this.$data);
+    }
   },
   methods: {
     growOld() {

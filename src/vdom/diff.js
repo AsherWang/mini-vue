@@ -96,6 +96,7 @@ function diffArr(oldArr, newArr, num = 0, patchs = {}) {
   // const set = new Set(oldArr.map(i => i.key));
   // const hasKey = set.size === oldArr.length;
   const hasKey = false; // 暂且不考虑有key的情况，这里作为优化点
+  // console.log(num, oldArr,newArr);
   if (hasKey) { // 有key且唯一
     // REORDER
   } else {
@@ -150,6 +151,7 @@ function diffArr(oldArr, newArr, num = 0, patchs = {}) {
         const eleKey = num + newArr.length + 1;
         // console.log('remove node', eleKey, oldItem);
         if (patchs[eleKey]) {
+          // console.log('patchs[eleKey]',patchs[eleKey]);
           patchs[eleKey].moves.push({ index, type: 0, node: oldItem });
         } else {
         // eslint-disable-next-line
@@ -163,6 +165,11 @@ function diffArr(oldArr, newArr, num = 0, patchs = {}) {
       } else {
         const eleKey = num + oldArr.length;
         if (patchs[eleKey]) {
+          // 哎当时没想到两种patch类型并存的情况，属于设计错误，这会简单修改下吧。。虽然不太优雅
+          if(patchs[eleKey].type !== 'REORDER'){
+            patchs[eleKey].appendType = 'REORDER';
+            patchs[eleKey].moves = patchs[eleKey].moves || [];
+          }
           patchs[eleKey].moves.push({ index, type: 1, node: newItem });
         } else {
           // eslint-disable-next-line
@@ -175,6 +182,7 @@ function diffArr(oldArr, newArr, num = 0, patchs = {}) {
         }
       }
     }
+    
     return diffArr(newOldArr, newNewArr, num + oldArr.length, patchs);
   }
   return patchs;
@@ -239,6 +247,34 @@ export function applyDiff(oldTree, patchs) {
             oldEl.nodeValue = patch.text;
           }
         } else if (patch.type === 'REORDER') {
+          // TO PERF
+          // 这里写的有点奇怪，像是在强行使用REORDER
+          // 先删除
+          patch.moves
+            .filter(a => a.type === 0)
+            .sort((a, b) => (a.index < b.index ? 1 : -1))
+            .forEach((move) => {
+              // console.log('remove index', move.index);
+              const { source } = oldTree.indexs[key];
+              if (move.node && move.node.$el && move.node.$el.parentNode) {
+                move.node.$el.parentNode.removeChild(move.node.$el);
+              }
+              source.splice(source.findIndex(a => a === move.node), 1);
+            });
+          // 补充
+          patch.moves
+            .filter(a => a.type === 1)
+            .sort((a, b) => (a.index > b.index ? 1 : -1))
+            .forEach((move) => {
+              // console.log('append index', move.index);
+              const { source, value } = oldTree.indexs[key];
+              if (source && source.length > 0) {
+                source[0].$el.parentNode.appendChild(move.node.render());
+              }
+              oldTree.indexs[key].source.push(move.node);
+            });
+        }
+        if(patch.appendType === 'REORDER'){
           // TO PERF
           // 这里写的有点奇怪，像是在强行使用REORDER
           // 先删除

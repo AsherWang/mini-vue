@@ -33,6 +33,23 @@ function vOn(attrs, name, val) {
   return false;
 }
 
+// v-show
+// 表达式依然只支持单单变量
+function vShow(attrs, name, val) {
+  if (name === "v-show") {
+    const show = calcExpr(this, val);
+    if (!show) {
+      if (attrs.style) {
+        attrs.style += ';display:none;';
+      } else {
+        attrs.style = ';display:none;';
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
 // 剩下的属性直接放到dom节点属性上
 function other(attrs, name, val) {
   attrs[name] = val;
@@ -41,6 +58,7 @@ function other(attrs, name, val) {
 
 directives.push(vBind);
 directives.push(vOn);
+directives.push(vShow);
 directives.push(other);
 
 export default directives;

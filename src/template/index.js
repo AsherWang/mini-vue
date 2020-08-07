@@ -1,6 +1,12 @@
 import { KElement as El } from "../vdom/index";
 import directives from "./directives";
-import { calcTextContent } from "./expr";
+import { calcTextContent, calcExpr } from "./expr";
+
+
+// 不太严谨不过基本可以了
+function isDynamicAttr(name){
+  return name.startsWith('v-bind:') || name.startsWith(':') || name.startsWith('v-show');
+}
 
 class TplTag {
   constructor(name, attrs = {}) {
@@ -17,15 +23,32 @@ class TplTag {
   }
 
   render(vm) {
+    // 处理v-if
+    if('v-if' in this.attrs){
+      const val = calcExpr(vm, this.attrs['v-if']);
+      if(!val){
+        return null;
+      }
+    }
+
     if (this.name === "root") {
-      // 取child的第一个
+      // 取child的第一个, 就还是先不支持多个‘根’元素吧
       return this.children.length ? this.children[0].render(vm) : null;
     }
     if (this.name === "text") {
       return calcTextContent(vm, this.attrs.content);
     }
+
+    
     const attrs = {};
-    Object.keys(this.attrs).forEach((name) => {
+    const orderedAttrNames = Object.keys(this.attrs).filter(name => !['v-for','v-if'].includes(name)).sort((a,b) => {
+      // 先静态后动态
+      const as = isDynamicAttr(a) ? 0 : 1;
+      const bs = isDynamicAttr(b) ? 0 : 1;
+      return bs - as;
+    });
+    // 预期先处理静态的再附加动态的
+    orderedAttrNames.forEach((name) => {
       const val = this.attrs[name];
       for (const handler of directives) {
         if (handler.call(vm, attrs, name, val)) {
@@ -36,7 +59,7 @@ class TplTag {
     return El(
       this.name,
       attrs,
-      this.children.map((i) => i.render(vm))
+      this.children.map((i) => i.render(vm)).filter(i => i),
     );
   }
 }

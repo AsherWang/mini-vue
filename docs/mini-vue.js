@@ -231,6 +231,7 @@
     if (oldArr.length === 0) {
       return patchs;
     }
+    // console.log(num, oldArr,newArr);
     {
       // 准备处理下一层
       let newOldArr = [];
@@ -283,6 +284,7 @@
           const eleKey = num + newArr.length + 1;
           // console.log('remove node', eleKey, oldItem);
           if (patchs[eleKey]) {
+            // console.log('patchs[eleKey]',patchs[eleKey]);
             patchs[eleKey].moves.push({ index, type: 0, node: oldItem });
           } else {
           // eslint-disable-next-line
@@ -296,6 +298,11 @@
         } else {
           const eleKey = num + oldArr.length;
           if (patchs[eleKey]) {
+            // 哎当时没想到两种patch类型并存的情况，属于设计错误，这会简单修改下吧。。虽然不太优雅
+            if(patchs[eleKey].type !== 'REORDER'){
+              patchs[eleKey].appendType = 'REORDER';
+              patchs[eleKey].moves = patchs[eleKey].moves || [];
+            }
             patchs[eleKey].moves.push({ index, type: 1, node: newItem });
           } else {
             // eslint-disable-next-line
@@ -308,6 +315,7 @@
           }
         }
       }
+      
       return diffArr(newOldArr, newNewArr, num + oldArr.length, patchs);
     }
   }
@@ -371,6 +379,34 @@
               oldEl.nodeValue = patch.text;
             }
           } else if (patch.type === 'REORDER') {
+            // TO PERF
+            // 这里写的有点奇怪，像是在强行使用REORDER
+            // 先删除
+            patch.moves
+              .filter(a => a.type === 0)
+              .sort((a, b) => (a.index < b.index ? 1 : -1))
+              .forEach((move) => {
+                // console.log('remove index', move.index);
+                const { source } = oldTree.indexs[key];
+                if (move.node && move.node.$el && move.node.$el.parentNode) {
+                  move.node.$el.parentNode.removeChild(move.node.$el);
+                }
+                source.splice(source.findIndex(a => a === move.node), 1);
+              });
+            // 补充
+            patch.moves
+              .filter(a => a.type === 1)
+              .sort((a, b) => (a.index > b.index ? 1 : -1))
+              .forEach((move) => {
+                // console.log('append index', move.index);
+                const { source, value } = oldTree.indexs[key];
+                if (source && source.length > 0) {
+                  source[0].$el.parentNode.appendChild(move.node.render());
+                }
+                oldTree.indexs[key].source.push(move.node);
+              });
+          }
+          if(patch.appendType === 'REORDER'){
             // TO PERF
             // 这里写的有点奇怪，像是在强行使用REORDER
             // 先删除
@@ -549,6 +585,23 @@
     return false;
   }
 
+  // v-show
+  // 表达式依然只支持单单变量
+  function vShow(attrs, name, val) {
+    if (name === "v-show") {
+      const show = calcExpr(this, val);
+      if (!show) {
+        if (attrs.style) {
+          attrs.style += ';display:none;';
+        } else {
+          attrs.style = ';display:none;';
+        }
+      }
+      return true;
+    }
+    return false;
+  }
+
   // 剩下的属性直接放到dom节点属性上
   function other(attrs, name, val) {
     attrs[name] = val;
@@ -557,7 +610,13 @@
 
   directives.push(vBind);
   directives.push(vOn);
+  directives.push(vShow);
   directives.push(other);
+
+  // 不太严谨不过基本可以了
+  function isDynamicAttr(name){
+    return name.startsWith('v-bind:') || name.startsWith(':') || name.startsWith('v-show');
+  }
 
   class TplTag {
     constructor(name, attrs = {}) {
@@ -574,15 +633,32 @@
     }
 
     render(vm) {
+      // 处理v-if
+      if('v-if' in this.attrs){
+        const val = calcExpr(vm, this.attrs['v-if']);
+        if(!val){
+          return null;
+        }
+      }
+
       if (this.name === "root") {
-        // 取child的第一个
+        // 取child的第一个, 就还是先不支持多个‘根’元素吧
         return this.children.length ? this.children[0].render(vm) : null;
       }
       if (this.name === "text") {
         return calcTextContent(vm, this.attrs.content);
       }
+
+      
       const attrs = {};
-      Object.keys(this.attrs).forEach((name) => {
+      const orderedAttrNames = Object.keys(this.attrs).filter(name => !['v-for','v-if'].includes(name)).sort((a,b) => {
+        // 先静态后动态
+        const as = isDynamicAttr(a) ? 0 : 1;
+        const bs = isDynamicAttr(b) ? 0 : 1;
+        return bs - as;
+      });
+      // 预期先处理静态的再附加动态的
+      orderedAttrNames.forEach((name) => {
         const val = this.attrs[name];
         for (const handler of directives) {
           if (handler.call(vm, attrs, name, val)) {
@@ -593,7 +669,7 @@
       return KElement(
         this.name,
         attrs,
-        this.children.map((i) => i.render(vm))
+        this.children.map((i) => i.render(vm)).filter(i => i),
       );
     }
   }
@@ -790,6 +866,7 @@
     let data = options.data || {};
     data = typeof options.data === "function" ? options.data.call(vm) : data;
     observe(data);
+    vm.$data = data;
     assignProperties(data, vm);
 
     // 简单处理computed
@@ -854,6 +931,7 @@
       vm.$vdom = vm.$render.call(vm);
       // console.log('vm.$vdom',vm.$vdom);
       if (vm.$preVdom) {
+        // console.log(vm.$preVdom,vm.$vdom)
         const result = diff(vm.$preVdom, this.$vdom);
         // console.log('diff result', result);
         applyDiff(vm.$preVdom, result);
