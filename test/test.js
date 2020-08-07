@@ -40,7 +40,7 @@ function testMiniVue() {
         console.log(`detail.job change from ${pv} to ${nv}`);
       },
     },
-    template: '<div name="asd" :title="age">{{name}}</div>',
+    template: '<div class="virtual-container"><h3>{{name}}</h3><ul class="margin-left-10"></ul></div>',
     // render() {
     //   const name = this.name;
     //   const age = this.age;

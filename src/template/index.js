@@ -52,11 +52,21 @@ function getTillMatch(index, str, regex) {
 
 // 从index开始, 获取
 // 返回[subS, lastIndex]其中lastIndex是当前光标的位置,即目标ch的位置
-function getTillNextCh(index, str, ch = "") {
-  if (ch === "") {
+function getTillNextCh(index, str, chrs = null) {
+  if (chrs === null || chrs.length ===0) {
     return [str.substring(index), str.length];
   }
-  const nextIndex = str.indexOf(ch, index);
+  let nextIndex = index;
+  while(nextIndex < str.length){
+    if(chrs.includes(str[nextIndex])){
+      break;
+    }
+    nextIndex += 1;
+  }
+  if(nextIndex === str.length){
+    nextIndex = -1;
+  }
+  // const nextIndex = str.indexOf(ch, index);
   return nextIndex === -1
     ? [str.substring(index), str.length]
     : [str.substr(index, nextIndex - index), nextIndex];
@@ -94,15 +104,19 @@ function doCompile(templateStr) {
         // console.log("close tag", tagname, idx);
       } else if (str[idx] === "<") {
         // tag start
-        const [tagname, nextIdx] = getTillNextCh(idx + 1, str, " ");
+        const [tagname, nextIdx] = getTillNextCh(idx + 1, str, [" ",">"]);
         const newTag = new TplTag(tagname);
         stackTop.children.push(newTag);
         stackTop = newTag;
+        if(str[nextIdx] === ' '){
+          state = 1;
+        }else{
+          state = 0;
+        }
         idx = nextIdx + 1;
-        state = 1;
       } else {
         // text start
-        const [newText, nextIdx] = getTillNextCh(idx, str, "<");
+        const [newText, nextIdx] = getTillNextCh(idx, str, ["<"]);
         stackTop.children.push(new TplTag("text", { content: newText })); // 免压栈
         idx = nextIdx;
       }

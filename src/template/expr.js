@@ -8,7 +8,7 @@ export function calcExpr(vm, expr){
 // 解析诸如name:{{name}}
 export function calcTextContent(vm, content){
   let ret = content;
-  let exprs = content.match(/{{\w+}}/g);
+  let exprs = content.match(/{{\w+}}/g); // 目前先认为表达式只是一个变量名字而已
   exprs = [...new Set(exprs)];
   exprs.forEach(expr => {
     const rExpr =  expr.substr(2, expr.length -4);

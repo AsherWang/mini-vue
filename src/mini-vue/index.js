@@ -85,7 +85,7 @@ function MiniVue(options) {
 
   // 解析模板
   const elTree = compileTemplate(options.template || "");
-
+  console.log('elTree', elTree);
   // 化为render函数
   vm.$render = () => {
     return elTree.render(vm);
