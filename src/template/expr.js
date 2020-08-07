@@ -5,6 +5,12 @@ export function calcExpr(vm, expr){
   return vm[expr];
 }
 
+// 比如在@click="add(name)"
+// 处理add(name)的解析和喂参数，目前只考虑有add
+export function calcCallbackExpr(vm, expr){
+  return vm[expr];
+}
+
 // 解析诸如name:{{name}}
 export function calcTextContent(vm, content){
   let ret = content;

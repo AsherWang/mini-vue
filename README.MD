@@ -1,6 +1,9 @@
 ### MiniVue
-读Vue2源码之后尝试自己做一个简单实现  
-复习 & 梳理结构
+读Vue2源码之后尝试自己做一个简单(粗糙)实现  
+复习 & 梳理结构  
+基本实现 `data`, `computed` ,`methods`, `watch`, `template`  
+指令 `v-bind`, `v-on`
+
 
 ### 目录结构
 | 路径 | 描述 | 代码/行 |  
@@ -9,6 +12,7 @@
 | /src/observer/walk | 深度遍历一个对象或者数组的所有值,配合依赖收集使用 | 20+ |
 | /src/mini-vue | 实现MiniVue方法，处理传入参数 | 100+|
 | /src/vdom | 实现虚拟DOM和diff操作, 偷懒从之前写的 [一个项目](https://github.com/AsherWang/virtual-dom-practice) 里边搬了过来 | 300+ |
+| /src/template | 解析template, 转化为vdom, 其中表达式求值太难了还未实现 | 300+ |
 
 
 ### 样例代码
@@ -18,12 +22,12 @@ const vm = new MiniVue({
   data() {
     return {
       name: "MiniVue",
-      btnClickCount: 0,
+      nickName: "mini-vue",
       age: 0,
       detail: {
         job: "DEV",
       },
-      hobbies: ["c", "t", "r"],
+      hobbies: ["c", "t", "r", "l"],
     };
   },
   computed: {
@@ -36,12 +40,11 @@ const vm = new MiniVue({
     },
   },
   methods: {
-    growOld(num = 1) {
-      this.age += num;
+    growOld() {
+      this.age += 1;
     },
-    onBtnClick() {
-      console.log("btn clicked!");
-      this.btnClickCount += 1;
+    onValueChange(e) {
+      this.nickName = e.target.value;
     },
   },
   watch: {
@@ -52,45 +55,33 @@ const vm = new MiniVue({
       console.log(`detail.job change from ${pv} to ${nv}`);
     },
   },
-  render() {
-    const name = this.name;
-    const age = this.age;
-    const ulChildren = [
-      El("li", { class: "item" }, [`name : ${name}`]),
-      El("li", { class: "item" }, [`age: ${age}`]),
-    ];
-    return El("div", { class: "virtual-container" }, [
-      El("h3", {}, [name]),
-      El("button", { "@click": this.onBtnClick }, [`Click Me : ${this.btnClickCount}`]),
-      El("ul", { class: "margin-left-10" }, ulChildren),
-    ]);
-  },
+  template:
+    '<div class="virtual-container"><h3>{{name}}</h3>' +
+    '<ul class="margin-left-10">' +
+    '<li class="item">name: {{name}}</li>' +
+    '<li class="item"><span>age: {{age}}</span><button style="margin-left:10px" @click="growOld">grow</button></li>' +
+    '<li class="item"><div><span>nick: </span><span>{{nickName}}</span></div></li>' +
+    '<li class="item"><div><span>edit nick: </span><input :value="nickName" @change="onValueChange" /></div></li>' +
+    '<li class="item">made in China</li>' +
+    '<li class="item">made for fun</li>' +
+    "</ul>" +
+    "<h3>Desc</h3>" +
+    "<div>{{info}}</div>" +
+    "</div>",
 });
-
-console.log(vm.info); // ash:23 - IT:c,t,r
-console.log(vm.infoplus); // ash:23 - IT:c,t,r-plus
-
-vm.growOld(10);
-vm.name = "c";
-vm.detail.job = "singer";
-vm.hobbies[2]='rap';
-vm.hobbies.push("l");
-
-console.log(vm.info); // c:33 - singer:c,t,rap,l
-console.log(vm.infoplus); // c:33 - singer:c,t,rap,l-plus
 ```
 
-### DEV
+### 开发
 1. `npm i`  
 1. `npm run dev`  
 1. 打开浏览器 http://localhost:10001/
 
 ### TODOS
-- 解析template, 啊。。
 - 自定义组件
 
 ### PERF
 - vdom: 当初更年轻, 更简单粗暴
+- template: 表达式求值， 啊
 
 
 ### Lisence

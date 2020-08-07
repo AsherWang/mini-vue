@@ -101,12 +101,14 @@ function doCompile(templateStr) {
       if (str[idx] === "<" && str[idx + 1] === "/") {
         const [, nextIdx] = getTillMatch(idx + 2, str, /^[^>]+/);
         idx = nextIdx + 1;
-        // console.log("close tag", tagname, idx);
+        elStack.pop();
+        stackTop = elStack[elStack.length - 1];
       } else if (str[idx] === "<") {
         // tag start
         const [tagname, nextIdx] = getTillNextCh(idx + 1, str, [" ",">"]);
         const newTag = new TplTag(tagname);
         stackTop.children.push(newTag);
+        elStack.push(newTag);
         stackTop = newTag;
         if(str[nextIdx] === ' '){
           state = 1;
@@ -130,7 +132,6 @@ function doCompile(templateStr) {
         elStack.pop();
         stackTop = elStack[elStack.length - 1];
         state = 0;
-        // console.log("close pop", idx);
       } else if (str[idx] === ">") {
         idx += 1;
         state = 0;
