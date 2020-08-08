@@ -44,16 +44,10 @@ function testMiniVue() {
         console.log(`detail.job change from ${pv} to ${nv}`);
       },
     },
-    // template:
-    //   '<div class="virtual-container"><h3>{{name}}</h3>' +
-    //   '<div class="item" v-show="showName" style="font-weight:bold;">name: {{name}}</div>' +
-    //   '<div class="item"><span>showName</span><button style="margin-left:10px" @click="toggleShowName">toggle</button></div>' +
-    //   '<div class="item">made in China</div>' +
-    //   '</div>',
     template:
       '<div class="virtual-container"><h3>{{name}}</h3>' +
       '<ul class="margin-left-10">' +
-      '<li class="item" v-show="showName" style="font-weight:bold;">name: {{name}}</li>' +
+      '<li class="item" v-if="showName" style="font-weight:bold;">name: {{name}}</li>' +
       '<li class="item"><span>showName: {{showName}}</span><button style="margin-left:10px" @click="toggleShowName">toggle</button></li>' +
       '<li class="item"><span>age: {{age}}</span><button style="margin-left:10px" @click="growOld">grow</button></li>' +
       '<li class="item"><div><span>nick: </span><span>{{nickName}}</span></div></li>' +

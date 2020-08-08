@@ -103,7 +103,7 @@ function MiniVue(options) {
       // console.log(vm.$preVdom,vm.$vdom)
       const result = diff(vm.$preVdom, this.$vdom);
       // console.log('diff result', result);
-      applyDiff(vm.$preVdom, result);
+      applyDiff(result);
     } else {
       vm.$el.firstElementChild && vm.$el.firstElementChild.remove();
       vm.$el.appendChild(vm.$vdom.render())
@@ -120,7 +120,7 @@ function MiniVue(options) {
     vm,
     function walkUpsidedown() {
       walk(data);
-      walk(computedData);
+      // walk(computedData);
     },
     vm.render
   );

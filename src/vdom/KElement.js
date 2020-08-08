@@ -1,16 +1,15 @@
 class _Element {
   constructor(tagName, props, children) {
+    this.parentNode = null;
     this.tagName = tagName; // 对应的dom节点标签
     this.props = props || {}; // 属性
     this.children = children || []; // 孩子节点
     this.key = props ? props.key : undefined; // 备用，diff使用，目前还没用到
     this.isText = false; // 是否是纯文本节点
-    this.text = ''; // 如果是纯文本节点，text存入文本内容
-    // init
-    let count = 0;
+    this.text = ""; // 如果是纯文本节点，text存入文本内容
     this.children.forEach((child, index) => {
       if (child instanceof _Element) {
-        count += child.count;
+        child.parentNode = this;
       }
       // 这里先注释掉组件的实例
       // else if (child instanceof _Component) {
@@ -20,11 +19,10 @@ class _Element {
         const textNode = new _Element();
         textNode.isText = true;
         textNode.text = child;
+        textNode.parentNode = this;
         this.children[index] = textNode;
       }
-      count += 1;
     });
-    this.count = count; // count的意思是，嗯此节点孩子节点等等总节点数
   }
 
   // 预期返回结果是一个HTML DOM节点对象
@@ -52,7 +50,7 @@ class _Element {
 
   // 设置当$el的属性
   setAttr(name, value, preValue) {
-    if (typeof value === 'function' && name.startsWith('@')) {
+    if (typeof value === "function" && name.startsWith("@")) {
       // 绑定事件
       const evtName = name.slice(1);
       // 可能需要判断是不是原生事件之类的，这里还没有自定义组件所以只有原生事件
@@ -67,12 +65,44 @@ class _Element {
       this.$el.addEventListener(evtName, value);
     } else {
       // 应该还有其他属性需要直接赋值而不是使用setAttr
-      if(name === 'value'){
-        this.$el.value= value;
-      }else{
+      if (name === "value") {
+        this.$el.value = value;
+      } else {
         this.$el.setAttribute(name, value);
       }
     }
+  }
+
+  appendChild(child) {
+    this.children.push(child);
+    child.parentNode = this;
+  }
+  // remove child
+  removeChild(child) {
+    const idx = this.children.indexOf(child);
+    if (idx !== -1) {
+      this.children.splice(idx, 1);
+    } else {
+      console.log("_Element removeChild failed");
+    }
+  }
+
+  replaceChild(child, newChild) {
+    const idx = this.children.indexOf(child);
+    if (idx !== -1) {
+      this.children[idx] = newChild;
+      newChild.parentNode = this;
+    } else {
+      console.log("_Element replaceChild failed");
+    }
+  }
+
+  removeSelf() {
+    this.parentNode && this.parentNode.removeChild(this);
+  }
+
+  replaceSelf(newItem) {
+    this.parentNode && this.parentNode.replaceChild(this, newItem);
   }
 }
 
