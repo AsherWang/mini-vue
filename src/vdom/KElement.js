@@ -68,7 +68,11 @@ class _Element {
       if (name === "value") {
         this.$el.value = value;
       } else {
-        this.$el.setAttribute(name, value);
+        if (value) {
+          this.$el.setAttribute(name, value);
+        } else {
+          this.$el.removeAttribute(name);
+        }
       }
     }
   }

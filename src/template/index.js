@@ -1,6 +1,6 @@
 import { KElement as El } from "../vdom/index";
 import directives from "./directives";
-import { calcTextContent, calcExpr } from "./expr";
+import { calcTextContent, calcExpr, calcVForExpr } from "./expr";
 
 
 // 不太严谨不过基本可以了
@@ -22,21 +22,28 @@ class TplTag {
     this.attrs[key] = value;
   }
 
-  render(vm) {
-    // 处理v-if
+  render(vm, parentScope){
+    // 最简模式 v-for
+    if('v-for' in this.attrs){
+      return calcVForExpr(vm, this.attrs['v-for'], parentScope).map(scope => this.doRender(vm, scope));
+    }
+    // 处理 v-if
     if('v-if' in this.attrs){
       const val = calcExpr(vm, this.attrs['v-if']);
       if(!val){
         return null;
       }
     }
+    return this.doRender(vm, parentScope);
+  }
 
+  doRender(vm, scope = {}) {
     if (this.name === "root") {
       // 取child的第一个, 就还是先不支持多个‘根’元素吧
       return this.children.length ? this.children[0].render(vm) : null;
     }
     if (this.name === "text") {
-      return calcTextContent(vm, this.attrs.content);
+      return calcTextContent(vm, this.attrs.content, scope);
     }
 
     
@@ -51,7 +58,7 @@ class TplTag {
     orderedAttrNames.forEach((name) => {
       const val = this.attrs[name];
       for (const handler of directives) {
-        if (handler.call(vm, attrs, name, val)) {
+        if (handler.call(vm, attrs, name, val, {scope})) {
           break;
         }
       }
@@ -59,7 +66,7 @@ class TplTag {
     return El(
       this.name,
       attrs,
-      this.children.map((i) => i.render(vm)).filter(i => i),
+      this.children.map((i) => i.render(vm, scope)).filter(i => i).flat(),
     );
   }
 }

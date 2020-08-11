@@ -129,6 +129,7 @@
     if(!obj || (!Array.isArray(obj) && typeof obj !== 'object') || touchedObjs.includes(obj)){
       return;
     }
+    touchedObjs.push(obj);
     if(Array.isArray(obj)){
       obj.forEach(v => doWalk(v));
     }else {
@@ -337,7 +338,11 @@
         if (name === "value") {
           this.$el.value = value;
         } else {
-          this.$el.setAttribute(name, value);
+          if (value) {
+            this.$el.setAttribute(name, value);
+          } else {
+            this.$el.removeAttribute(name);
+          }
         }
       }
     }
@@ -386,43 +391,108 @@
 
   // 对目前只支持单变量表达式
 
-  function calcExpr(vm, expr){
+  function calcExpr(vm, expr, scope = {}) {
+    if (scope[expr] !== undefined) {
+      return scope[expr];
+    }
     return vm[expr];
   }
 
   // 比如在@click="add(name)"
   // 处理add(name)的解析和喂参数，目前只考虑有add
-  function calcCallbackExpr(vm, expr){
+  function calcCallbackExpr(vm, expr) {
     return vm[expr];
   }
 
   // 解析诸如name:{{name}}
-  function calcTextContent(vm, content){
+  function calcTextContent(vm, content, scope = {}) {
     let ret = content;
     let exprs = content.match(/{{\w+}}/g); // 目前先认为表达式只是一个变量名字而已
     exprs = [...new Set(exprs)];
-    exprs.forEach(expr => {
-      const rExpr =  expr.substr(2, expr.length -4);
-      const val = calcExpr(vm, rExpr);
-      ret = ret.replace(new RegExp(expr.replace(/\{/,'\\{'),'g'),val);
+    exprs.forEach((expr) => {
+      const rExpr = expr.substr(2, expr.length - 4);
+      const val = calcExpr(vm, rExpr, scope);
+      ret = ret.replace(new RegExp(expr.replace(/\{/, "\\{"), "g"), val);
     });
     return ret;
+  }
+
+  // 解析v-for
+  // <div v-for="item in items"></div>
+  // <div v-for="(item, index) in items"></div>
+  // <div v-for="(val, key) in object"></div>
+  // <div v-for="(val, name, index) in object"></div>
+  function calcVForExpr(vm, expr, scope = {}) {
+    const trimedExpr = expr.trim();
+    const inIdx = trimedExpr.indexOf(" in ");
+    const fStr = trimedExpr.substring(0, inIdx).trim();
+    let keys = [];
+    if (fStr.startsWith("(")) {
+      keys = fStr
+        .substr(1, fStr.length - 2)
+        .split(",")
+        .map((i) => i.trim());
+    } else {
+      keys.push(fStr);
+    }
+    const valExpr = trimedExpr.substring(inIdx + 4);
+    let listData = calcExpr(vm, valExpr, scope) || [];
+    let isObj = false;
+    if (typeof listData === "number") {
+      listData = Array(listData)
+        .fill(" ")
+        .map((_, idx) => idx);
+    } else if (typeof listData === "string") {
+      listData = Array(listData.length)
+        .fill(" ")
+        .map((_, idx) => listData[idx]);
+    }
+    if (Array.isArray(listData)) {
+      listData = listData.map((item, index) => ({ item, index, key: index }));
+    } else if (typeof listData === "object") {
+      listData = Object.keys(listData).map((key, index) => ({
+        item: listData[key],
+        index,
+        key,
+      }));
+      isObj = true;
+    }
+    return listData.map(({ item, index, key }) => {
+      const ret = {...scope};
+      keys.forEach((keyName, idx) => {
+        switch(idx){
+          case 0:
+            ret[keyName] = item;
+            return;
+          case 1:
+            ret[keyName] = isObj ? key : index;
+            return;
+          case 2:
+            if(isObj){
+              ret[keyName] = index;
+            }  
+            return;
+        }
+      });
+      return ret;
+    });
   }
 
   const directives = [];
 
   // v-bind
-  function vBind(attrs, name, val) {
+  function vBind(attrs, name, val, opt = {}) {
+    const scope = (opt && opt.scope) || {};
     // v-bind:name,:name,v-bind
     if (name === "v-bind") {
-      const obj = calcExpr(this, val);
+      const obj = calcExpr(this, val, scope);
       if (obj && typeof obj === "object") {
         Object.assign(attrs, obj);
       }
       return true;
     } else if (name.startsWith("v-bind:") || name.startsWith(":")) {
       const [, rName] = name.split(":");
-      attrs[rName] = calcExpr(this, val);
+      attrs[rName] = calcExpr(this, val, scope);
       return true;
     }
     return false;
@@ -489,21 +559,28 @@
       this.attrs[key] = value;
     }
 
-    render(vm) {
-      // 处理v-if
+    render(vm, parentScope){
+      // 最简模式 v-for
+      if('v-for' in this.attrs){
+        return calcVForExpr(vm, this.attrs['v-for'], parentScope).map(scope => this.doRender(vm, scope));
+      }
+      // 处理 v-if
       if('v-if' in this.attrs){
         const val = calcExpr(vm, this.attrs['v-if']);
         if(!val){
           return null;
         }
       }
+      return this.doRender(vm, parentScope);
+    }
 
+    doRender(vm, scope = {}) {
       if (this.name === "root") {
         // 取child的第一个, 就还是先不支持多个‘根’元素吧
         return this.children.length ? this.children[0].render(vm) : null;
       }
       if (this.name === "text") {
-        return calcTextContent(vm, this.attrs.content);
+        return calcTextContent(vm, this.attrs.content, scope);
       }
 
       
@@ -518,7 +595,7 @@
       orderedAttrNames.forEach((name) => {
         const val = this.attrs[name];
         for (const handler of directives) {
-          if (handler.call(vm, attrs, name, val)) {
+          if (handler.call(vm, attrs, name, val, {scope})) {
             break;
           }
         }
@@ -526,7 +603,7 @@
       return KElement(
         this.name,
         attrs,
-        this.children.map((i) => i.render(vm)).filter(i => i),
+        this.children.map((i) => i.render(vm, scope)).filter(i => i).flat(),
       );
     }
   }

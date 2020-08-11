@@ -3,17 +3,18 @@ import { calcExpr, calcCallbackExpr } from "./expr";
 const directives = [];
 
 // v-bind
-function vBind(attrs, name, val) {
+function vBind(attrs, name, val, opt = {}) {
+  const scope = (opt && opt.scope) || {};
   // v-bind:name,:name,v-bind
   if (name === "v-bind") {
-    const obj = calcExpr(this, val);
+    const obj = calcExpr(this, val, scope);
     if (obj && typeof obj === "object") {
       Object.assign(attrs, obj);
     }
     return true;
   } else if (name.startsWith("v-bind:") || name.startsWith(":")) {
     const [, rName] = name.split(":");
-    attrs[rName] = calcExpr(this, val);
+    attrs[rName] = calcExpr(this, val, scope);
     return true;
   }
   return false;
