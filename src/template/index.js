@@ -38,6 +38,13 @@ class TplTag {
   }
 
   doRender(vm, scope = {}) {
+    const createComp = vm.component(this.name);
+    if(createComp){
+      const vdomOfComp = createComp({});
+      console.log('vdomOfComp',vdomOfComp);
+      return vdomOfComp.$render()
+    }
+
     if (this.name === "root") {
       // 取child的第一个, 就还是先不支持多个‘根’元素吧
       return this.children.length ? this.children[0].render(vm) : null;
@@ -45,8 +52,6 @@ class TplTag {
     if (this.name === "text") {
       return calcTextContent(vm, this.attrs.content, scope);
     }
-
-    
     const attrs = {};
     const orderedAttrNames = Object.keys(this.attrs).filter(name => !['v-for','v-if'].includes(name)).sort((a,b) => {
       // 先静态后动态
@@ -63,6 +68,7 @@ class TplTag {
         }
       }
     });
+
     return El(
       this.name,
       attrs,

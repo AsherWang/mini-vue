@@ -1,6 +1,11 @@
+import MyComp from './my-comp';
+
 function testMiniVue() {
   const vm = new MiniVue({
     el: "#app",
+    components:{
+      MyComp,
+    },
     data() {
       return {
         name: "MiniVue",
@@ -56,6 +61,7 @@ function testMiniVue() {
       '<li class="item">made for fun</li>' +
       '<li class="item" v-for="(h, index) in hobbies" :key="index">hobby {{index}} -> {{h}}</li>' +
       '</ul>' +
+      '<my-comp />' +
       '<h4>computed.dataStr</h4>' +
       '<pre style="background:lemonchiffon;padding:5px;">{{dataStr}}</pre>' +
       '</div>',

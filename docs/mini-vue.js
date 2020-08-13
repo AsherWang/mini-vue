@@ -575,6 +575,13 @@
     }
 
     doRender(vm, scope = {}) {
+      const createComp = vm.component(this.name);
+      if(createComp){
+        const vdomOfComp = createComp({});
+        console.log('vdomOfComp',vdomOfComp);
+        return vdomOfComp.$render()
+      }
+
       if (this.name === "root") {
         // 取child的第一个, 就还是先不支持多个‘根’元素吧
         return this.children.length ? this.children[0].render(vm) : null;
@@ -582,8 +589,6 @@
       if (this.name === "text") {
         return calcTextContent(vm, this.attrs.content, scope);
       }
-
-      
       const attrs = {};
       const orderedAttrNames = Object.keys(this.attrs).filter(name => !['v-for','v-if'].includes(name)).sort((a,b) => {
         // 先静态后动态
@@ -600,6 +605,7 @@
           }
         }
       });
+
       return KElement(
         this.name,
         attrs,
@@ -768,6 +774,40 @@
     }
   }
 
+  // 自定义组件
+  // Vue.component( id, [definition] )
+
+  // 大写字母变为-小写
+  function normalizeName(id){
+    return Array(id.length).fill('').map((_,idx) => {
+      const ch = id[idx];
+      const isCapital = ch.charCodeAt() >= 65 && ch.charCodeAt() <=90;
+      return isCapital ? `${idx !== 0 ? '-' : ''}${ch.toLowerCase()}` : ch;
+    }).join('');
+  }
+
+
+
+  function create(MiniVue, global) {
+    let comps = {}; // 组件库
+    return function(id, definition){
+      const nId = normalizeName(id);
+      if (definition) {
+        comps[nId] = function createInstance(options){
+          const fOpts = Object.assign({}, definition, options);
+          return new MiniVue(fOpts);
+        };
+      } else {
+        return global ? global(nId) || comps[nId] : comps[nId];
+      }
+    };
+  }
+
+  var component = {
+    create,
+    normalizeName,
+  };
+
   function defineProperty(vm, key, opt) {
     Object.defineProperty(vm, key, {
       configurable: true,
@@ -791,6 +831,22 @@
 
   function MiniVue(options) {
     const vm = this;
+    
+    // 简单处理el
+    if (options.el) {
+      if (typeof options.el === "string") {
+        vm.$el = document.querySelector(options.el);
+      } else {
+        vm.$el = options.el;
+      }
+    }
+    vm.isRoot = !!options.el;
+
+    vm.component = vm.isRoot ? MiniVue.component : component.create(MiniVue, MiniVue.component);
+    // 简单处理components
+    const components = options.components || {};
+    Object.keys(components).forEach(id => vm.component(id, components[id]));
+
     // 简单处理prop
     // TODO: 还没有引入template, 子组件等，所以目前prop实际上是只读的
     // const props = options.props || {};
@@ -840,21 +896,12 @@
       new Watcher(vm, getter, (...args) => method.apply(vm, args));
     });
 
-    // 简单处理el
-    if (options.el) {
-      if (typeof options.el === "string") {
-        vm.$el = document.querySelector(options.el);
-      } else {
-        vm.$el = options.el;
-      }
-    }
 
     // 解析模板
-    const elTree = compile(options.template || "");
-    // console.log('elTree', elTree);
+    vm.$elTree = compile(options.template || "");
     // 化为render函数
     vm.$render = () => {
-      return elTree.render(vm);
+      return vm.$elTree.render(vm);
     };
 
     // 处理render
@@ -870,26 +917,35 @@
         // console.log('diff result', result);
         applyDiff(result);
       } else {
-        vm.$el.firstElementChild && vm.$el.firstElementChild.remove();
-        vm.$el.appendChild(vm.$vdom.render());
-
+        if(vm.isRoot){
+          vm.$el.firstElementChild && vm.$el.firstElementChild.remove();
+          vm.$el.appendChild(vm.$vdom.render());
+        }else {
+          vm.$el.replaceWith(vm.$vdom.render());
+        }
         // vm.$el.replaceWith(vm.$vdom.render());
         vm.$preVdom = vm.$vdom;
       }
     };
-
-    vm.render(); // 渲染
 
     // 重绘触发
     vm.renderWatcher = new Watcher(
       vm,
       function walkUpsidedown() {
         walk(data);
-        // walk(computedData);
+        walk(computedData);
       },
       vm.render
     );
+
+    // 根节点的第一次渲染
+    if(vm.$el){
+      vm.render(); // 渲染
+    }
   }
+
+  // 组件
+  MiniVue.component = component.create(MiniVue);
 
   return MiniVue;
 

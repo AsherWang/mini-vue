@@ -2,7 +2,7 @@
 读Vue2源码之后尝试自己做一个简单(粗糙)实现  
 复习 & 梳理结构  
 基本实现 `data`, `computed` ,`methods`, `watch`, `template`  
-指令 `v-bind`, `v-on`, `v-show`, `v-if`
+指令 `v-bind`, `v-on`, `v-show`, `v-if`, `v-for`
 
 ### 在线预览
 [点我点我](https://asherwang.github.io/mini-vue/)
