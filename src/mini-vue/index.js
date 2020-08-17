@@ -28,6 +28,8 @@ function assignProperties(src, dest) {
 function MiniVue(options) {
   const vm = this;
   
+  vm.$options = options;
+
   // 简单处理el
   if (options.el) {
     if (typeof options.el === "string") {
@@ -43,9 +45,32 @@ function MiniVue(options) {
   const components = options.components || {};
   Object.keys(components).forEach(id => vm.component(id, components[id]));
 
-  // 简单处理prop
-  // TODO: 还没有引入template, 子组件等，所以目前prop实际上是只读的
-  // const props = options.props || {};
+  // 简单处理prop, 数据解析和绑定放到template的render中
+  // 像处理computed一样处理props，只不过上下文是parentVm
+  if(options.$parentVm){
+    vm.$parentVm = options.$parentVm;
+    let props = options.props || {};
+    let tmp = props;
+    if(Array.isArray(props)){
+      const tmp = {};
+      props.forEach(name => {tmp[name] = {}});
+    }
+    props = {};
+    Object.keys(tmp).forEach((key) => {
+      const getter = () => options.$attrs[key];
+      const watcher = new Watcher(vm, getter);
+      defineProperty(props, key, {
+        get: function getter() {
+          return watcher.value;
+        },
+        set: function setter(nv) {
+          console.warn("cannot set computed value with", nv);
+        },
+      });
+    });
+    assignProperties(props, vm);
+  }
+
   // assignProperties(props, vm);
 
   // 简单处理data
@@ -95,6 +120,7 @@ function MiniVue(options) {
 
   // 解析模板
   vm.$elTree = compileTemplate(options.template || "");
+  vm.$elTree.isComponent = !!vm.$parentVm;
   // 化为render函数
   vm.$render = () => {
     return vm.$elTree.render(vm);
@@ -117,25 +143,25 @@ function MiniVue(options) {
         vm.$el.firstElementChild && vm.$el.firstElementChild.remove();
         vm.$el.appendChild(vm.$vdom.render())
       }else{
-        vm.$el.replaceWith(vm.$vdom.render());
+        // vm.$el.replaceWith(vm.$vdom.render()); // 这里就是自定义组件了
       }
       // vm.$el.replaceWith(vm.$vdom.render());
       vm.$preVdom = vm.$vdom;
     }
   };
 
-  // 重绘触发
-  vm.renderWatcher = new Watcher(
-    vm,
-    function walkUpsidedown() {
-      walk(data);
-      walk(computedData);
-    },
-    vm.render
-  );
 
   // 根节点的第一次渲染
   if(vm.$el){
+    // 重绘触发
+    vm.renderWatcher = new Watcher(
+      vm,
+      function walkUpsidedown() {
+        walk(data);
+        walk(computedData);
+      },
+      vm.render
+    );
     vm.render(); // 渲染
   }
 }

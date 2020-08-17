@@ -4,13 +4,29 @@
 }((function () { 'use strict';
 
   var MyComp = {
-    name: 'MyComp',
+    name: "MyComp",
+    props: {
+      name: {
+        type: "name",
+        default: "cname",
+      },
+    },
     data() {
       return {
-        name: '123'
+        other: "123",
       };
     },
-    template: '<div>{{name}}</div>'
+    computed: {
+      info(){
+        return this.name + this.other;
+      },
+    },
+    template: "<div><div>{{name}}</div><div>{{other}}</div><div>{{info}}</div></div>",
+    watch: {
+      name(nv, pv){
+        console.log(`prop name change from ${pv} to ${nv}`);
+      }
+    },
   };
 
   function testMiniVue() {
@@ -74,7 +90,7 @@
         '<li class="item">made for fun</li>' +
         '<li class="item" v-for="(h, index) in hobbies" :key="index">hobby {{index}} -> {{h}}</li>' +
         '</ul>' +
-        '<my-comp />' +
+        '<my-comp :name="name" />' +
         '<h4>computed.dataStr</h4>' +
         '<pre style="background:lemonchiffon;padding:5px;">{{dataStr}}</pre>' +
         '</div>',

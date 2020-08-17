@@ -38,13 +38,6 @@ class TplTag {
   }
 
   doRender(vm, scope = {}) {
-    const createComp = vm.component(this.name);
-    if(createComp){
-      const vdomOfComp = createComp({});
-      console.log('vdomOfComp',vdomOfComp);
-      return vdomOfComp.$render()
-    }
-
     if (this.name === "root") {
       // 取child的第一个, 就还是先不支持多个‘根’元素吧
       return this.children.length ? this.children[0].render(vm) : null;
@@ -68,6 +61,13 @@ class TplTag {
         }
       }
     });
+    const createComp = vm.component(this.name);
+    if(createComp){
+      console.log('createComp new one')
+      const vdomOfComp = createComp({ $parentVm: vm, $attrs: attrs.bindGetters });
+      // 这里应该把props整理成computed的形式
+      return vdomOfComp.$render()
+    }
 
     return El(
       this.name,

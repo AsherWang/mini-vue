@@ -270,6 +270,7 @@
 
   class _Element {
     constructor(tagName, props, children) {
+      this.isComponent = false;
       this.parentNode = null;
       this.tagName = tagName; // 对应的dom节点标签
       this.props = props || {}; // 属性
@@ -483,16 +484,40 @@
   // v-bind
   function vBind(attrs, name, val, opt = {}) {
     const scope = (opt && opt.scope) || {};
+    // attrs.bindGetters = attrs.bindGetters || {};
+    if(!attrs.bindGetters){
+      Object.defineProperty(attrs, 'bindGetters', {
+        enumerable: false,
+        value: {},
+      });
+    }
     // v-bind:name,:name,v-bind
     if (name === "v-bind") {
       const obj = calcExpr(this, val, scope);
       if (obj && typeof obj === "object") {
         Object.assign(attrs, obj);
+        Object.keys(obj).forEach(name => {
+          Object.defineProperty(attrs.bindGetters, name, {
+            configurable: true,
+            enumerable: true,
+            get: () => {
+              return calcExpr(this, val, scope)[name];
+            }
+          });
+        });
       }
       return true;
     } else if (name.startsWith("v-bind:") || name.startsWith(":")) {
       const [, rName] = name.split(":");
       attrs[rName] = calcExpr(this, val, scope);
+      Object.defineProperty(attrs.bindGetters, rName, {
+        configurable: true,
+        enumerable: true,
+        get: () => {
+          // console.log('???',rName);
+          return calcExpr(this, val, scope);
+        }
+      });
       return true;
     }
     return false;
@@ -575,13 +600,6 @@
     }
 
     doRender(vm, scope = {}) {
-      const createComp = vm.component(this.name);
-      if(createComp){
-        const vdomOfComp = createComp({});
-        console.log('vdomOfComp',vdomOfComp);
-        return vdomOfComp.$render()
-      }
-
       if (this.name === "root") {
         // 取child的第一个, 就还是先不支持多个‘根’元素吧
         return this.children.length ? this.children[0].render(vm) : null;
@@ -605,6 +623,13 @@
           }
         }
       });
+      const createComp = vm.component(this.name);
+      if(createComp){
+        console.log('createComp new one');
+        const vdomOfComp = createComp({ $parentVm: vm, $attrs: attrs.bindGetters });
+        // 这里应该把props整理成computed的形式
+        return vdomOfComp.$render()
+      }
 
       return KElement(
         this.name,
@@ -797,6 +822,7 @@
           const fOpts = Object.assign({}, definition, options);
           return new MiniVue(fOpts);
         };
+        comps[nId].options = definition;
       } else {
         return global ? global(nId) || comps[nId] : comps[nId];
       }
@@ -832,6 +858,8 @@
   function MiniVue(options) {
     const vm = this;
     
+    vm.$options = options;
+
     // 简单处理el
     if (options.el) {
       if (typeof options.el === "string") {
@@ -847,9 +875,31 @@
     const components = options.components || {};
     Object.keys(components).forEach(id => vm.component(id, components[id]));
 
-    // 简单处理prop
-    // TODO: 还没有引入template, 子组件等，所以目前prop实际上是只读的
-    // const props = options.props || {};
+    // 简单处理prop, 数据解析和绑定放到template的render中
+    // 像处理computed一样处理props，只不过上下文是parentVm
+    if(options.$parentVm){
+      vm.$parentVm = options.$parentVm;
+      let props = options.props || {};
+      let tmp = props;
+      if(Array.isArray(props)){
+        props.forEach(name => {});
+      }
+      props = {};
+      Object.keys(tmp).forEach((key) => {
+        const getter = () => options.$attrs[key];
+        const watcher = new Watcher(vm, getter);
+        defineProperty(props, key, {
+          get: function getter() {
+            return watcher.value;
+          },
+          set: function setter(nv) {
+            console.warn("cannot set computed value with", nv);
+          },
+        });
+      });
+      assignProperties(props, vm);
+    }
+
     // assignProperties(props, vm);
 
     // 简单处理data
@@ -899,6 +949,7 @@
 
     // 解析模板
     vm.$elTree = compile(options.template || "");
+    vm.$elTree.isComponent = !!vm.$parentVm;
     // 化为render函数
     vm.$render = () => {
       return vm.$elTree.render(vm);
@@ -920,26 +971,24 @@
         if(vm.isRoot){
           vm.$el.firstElementChild && vm.$el.firstElementChild.remove();
           vm.$el.appendChild(vm.$vdom.render());
-        }else {
-          vm.$el.replaceWith(vm.$vdom.render());
         }
         // vm.$el.replaceWith(vm.$vdom.render());
         vm.$preVdom = vm.$vdom;
       }
     };
 
-    // 重绘触发
-    vm.renderWatcher = new Watcher(
-      vm,
-      function walkUpsidedown() {
-        walk(data);
-        walk(computedData);
-      },
-      vm.render
-    );
 
     // 根节点的第一次渲染
     if(vm.$el){
+      // 重绘触发
+      vm.renderWatcher = new Watcher(
+        vm,
+        function walkUpsidedown() {
+          walk(data);
+          walk(computedData);
+        },
+        vm.render
+      );
       vm.render(); // 渲染
     }
   }

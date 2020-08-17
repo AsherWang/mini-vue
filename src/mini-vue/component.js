@@ -21,6 +21,7 @@ function create(MiniVue, global) {
         const fOpts = Object.assign({}, definition, options);
         return new MiniVue(fOpts);
       }
+      comps[nId].options = definition;
     } else {
       return global ? global(nId) || comps[nId] : comps[nId];
     }

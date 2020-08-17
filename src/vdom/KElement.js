@@ -1,5 +1,6 @@
 class _Element {
   constructor(tagName, props, children) {
+    this.isComponent = false;
     this.parentNode = null;
     this.tagName = tagName; // 对应的dom节点标签
     this.props = props || {}; // 属性

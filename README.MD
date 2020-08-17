@@ -84,8 +84,8 @@ const vm = new MiniVue({
 ### Notes
 - vdom: 当初更年轻, 更简单粗暴，然后搬过来发现有bug，顺便被迫复习了一下vdom和diff
 
-### TODOS
-- 自定义组件
+### BUGS
+- 自定义组件销毁问题,啊..
 
 ### PERF
 - template: 表达式求值， 啊

@@ -5,16 +5,40 @@ const directives = [];
 // v-bind
 function vBind(attrs, name, val, opt = {}) {
   const scope = (opt && opt.scope) || {};
+  // attrs.bindGetters = attrs.bindGetters || {};
+  if(!attrs.bindGetters){
+    Object.defineProperty(attrs, 'bindGetters', {
+      enumerable: false,
+      value: {},
+    })
+  }
   // v-bind:name,:name,v-bind
   if (name === "v-bind") {
     const obj = calcExpr(this, val, scope);
     if (obj && typeof obj === "object") {
       Object.assign(attrs, obj);
+      Object.keys(obj).forEach(name => {
+        Object.defineProperty(attrs.bindGetters, name, {
+          configurable: true,
+          enumerable: true,
+          get: () => {
+            return calcExpr(this, val, scope)[name];
+          }
+        })
+      })
     }
     return true;
   } else if (name.startsWith("v-bind:") || name.startsWith(":")) {
     const [, rName] = name.split(":");
     attrs[rName] = calcExpr(this, val, scope);
+    Object.defineProperty(attrs.bindGetters, rName, {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        // console.log('???',rName);
+        return calcExpr(this, val, scope);
+      }
+    })
     return true;
   }
   return false;
