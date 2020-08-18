@@ -643,7 +643,7 @@
       });
       const createComp = vm.component(this.name);
       if (createComp) {
-        console.log('createComp new one');
+        // console.log('createComp new one', attrs.bindGetters);
         const vdomOfComp = createComp({ $parentVm: vm, $attrs: attrs.bindGetters });
         // 这里应该把props整理成computed的形式
         return vdomOfComp.$render();
@@ -899,13 +899,14 @@
     // 像处理computed一样处理props，只不过上下文是parentVm
     if (options.$parentVm) {
       vm.$parentVm = options.$parentVm;
-      let props = options.props || {};
-      const tmp = {};
-      if (Array.isArray(props)) {
-        props.forEach((name) => { tmp[name] = {}; });
+      let tmpProps = options.props || {};
+      if (Array.isArray(tmpProps)) {
+        const tmp = {};
+        tmpProps.forEach((name) => { tmp[name] = {}; });
+        tmpProps = tmp;
       }
-      props = {};
-      Object.keys(tmp).forEach((key) => {
+      const props = {};
+      Object.keys(tmpProps).forEach((key) => {
         const getter = () => options.$attrs[key];
         const watcher = new Watcher(vm, getter);
         defineProperty(props, key, {
@@ -913,7 +914,7 @@
             return watcher.value;
           },
           set: function Ksetter(nv) {
-            console.warn('cannot set computed value with', nv);
+            console.warn('cannot set prop value with', nv);
           },
         });
       });

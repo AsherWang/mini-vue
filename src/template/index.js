@@ -64,7 +64,7 @@ class TplTag {
     });
     const createComp = vm.component(this.name);
     if (createComp) {
-      console.log('createComp new one');
+      // console.log('createComp new one', attrs.bindGetters);
       const vdomOfComp = createComp({ $parentVm: vm, $attrs: attrs.bindGetters });
       // 这里应该把props整理成computed的形式
       return vdomOfComp.$render();
