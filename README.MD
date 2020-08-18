@@ -8,13 +8,13 @@
 [点我点我](https://asherwang.github.io/mini-vue/)
 
 ### 目录结构
-| 路径 | 描述 | 代码/行 |  
+| 路径 | 描述 |
 |:--|:--| :--|
-| /src/mini-vue | 实现MiniVue方法，处理传入参数 | 100+|
-| /src/observer | 实现对数据的监视和更新通知 | 100+ |
-| /src/observer/walk | 深度遍历一个对象或者数组的所有值,配合依赖收集使用 | 20+ |
-| /src/template | 解析template, 转化为vdom, 其中表达式求值太难了还未实现 | 300+ |
-| /src/vdom | 实现虚拟DOM和diff操作, 偷懒从之前写的 [一个项目](https://github.com/AsherWang/virtual-dom-practice) 里边搬了过来 | 200+ |
+| /src/mini-vue | 实现MiniVue方法，处理传入参数 |
+| /src/observer | 实现对数据的监视和更新通知 |
+| /src/observer/walk | 深度遍历一个对象或者数组的所有值,配合依赖收集使用 |
+| /src/template | 解析template, 转化为vdom, 其中表达式求值太难了还未实现 |
+| /src/vdom | 实现虚拟DOM和diff操作, 偷懒从之前写的 [一个项目](https://github.com/AsherWang/virtual-dom-practice) 里边搬了过来 |
 
 
 ### 样例代码
@@ -85,6 +85,7 @@ const vm = new MiniVue({
 - vdom: 当初更年轻, 更简单粗暴，然后搬过来发现有bug，顺便被迫复习了一下vdom和diff
 
 ### BUGS
+- diff遇到自定义组件
 - 自定义组件销毁问题,啊..
 
 ### PERF

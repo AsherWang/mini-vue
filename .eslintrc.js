@@ -1,6 +1,7 @@
 module.exports = {
   env: {
     es2020: true,
+    browser: true,
   },
   root: true,
   extends: [
@@ -11,7 +12,9 @@ module.exports = {
     sourceType: 'module',
   },
   rules: {
-    'max-classes-per-file': ['error', 10],
-    'class-methods-use-this': [false],
+    'class-methods-use-this': ['off'],
+    'no-console': ['off'],
   },
+  // files: ['bin/*.js', 'lib/*.js'],
+  // excludedFiles: ['docs/*.js'],
 };

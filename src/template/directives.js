@@ -1,4 +1,5 @@
-import { calcExpr, calcCallbackExpr } from "./expr";
+/* eslint-disable no-param-reassign */
+import { calcExpr, calcCallbackExpr } from './expr';
 
 const directives = [];
 
@@ -6,39 +7,35 @@ const directives = [];
 function vBind(attrs, name, val, opt = {}) {
   const scope = (opt && opt.scope) || {};
   // attrs.bindGetters = attrs.bindGetters || {};
-  if(!attrs.bindGetters){
+  if (!attrs.bindGetters) {
     Object.defineProperty(attrs, 'bindGetters', {
       enumerable: false,
       value: {},
-    })
+    });
   }
   // v-bind:name,:name,v-bind
-  if (name === "v-bind") {
+  if (name === 'v-bind') {
     const obj = calcExpr(this, val, scope);
-    if (obj && typeof obj === "object") {
+    if (obj && typeof obj === 'object') {
       Object.assign(attrs, obj);
-      Object.keys(obj).forEach(name => {
-        Object.defineProperty(attrs.bindGetters, name, {
+      Object.keys(obj).forEach((attrName) => {
+        Object.defineProperty(attrs.bindGetters, attrName, {
           configurable: true,
           enumerable: true,
-          get: () => {
-            return calcExpr(this, val, scope)[name];
-          }
-        })
-      })
+          get: () => calcExpr(this, val, scope)[attrName],
+        });
+      });
     }
     return true;
-  } else if (name.startsWith("v-bind:") || name.startsWith(":")) {
-    const [, rName] = name.split(":");
+  } if (name.startsWith('v-bind:') || name.startsWith(':')) {
+    const [, rName] = name.split(':');
     attrs[rName] = calcExpr(this, val, scope);
     Object.defineProperty(attrs.bindGetters, rName, {
       configurable: true,
       enumerable: true,
-      get: () => {
-        // console.log('???',rName);
-        return calcExpr(this, val, scope);
-      }
-    })
+      get: () => calcExpr(this, val, scope),
+
+    });
     return true;
   }
   return false;
@@ -49,7 +46,7 @@ function vBind(attrs, name, val, opt = {}) {
 // v-on
 function vOn(attrs, name, val) {
   // v-on:name, @name
-  if (name.startsWith("v-on:") || name.startsWith("@")) {
+  if (name.startsWith('v-on:') || name.startsWith('@')) {
     const [, rName] = name.split(/[:@]/);
     attrs[`@${rName}`] = calcCallbackExpr(this, val);
     // console.log("evt name", rName);
@@ -61,7 +58,7 @@ function vOn(attrs, name, val) {
 // v-show
 // 表达式依然只支持单单变量
 function vShow(attrs, name, val) {
-  if (name === "v-show") {
+  if (name === 'v-show') {
     const show = calcExpr(this, val);
     if (!show) {
       if (attrs.style) {

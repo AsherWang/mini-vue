@@ -21,7 +21,7 @@ export function calcTextContent(vm, content, scope = {}) {
   exprs.forEach((expr) => {
     const rExpr = expr.substr(2, expr.length - 4);
     const val = calcExpr(vm, rExpr, scope);
-    ret = ret.replace(new RegExp(expr.replace(/\{/, "\\{"), "g"), val);
+    ret = ret.replace(new RegExp(expr.replace(/\{/, '\\{'), 'g'), val);
   });
   return ret;
 }
@@ -33,13 +33,13 @@ export function calcTextContent(vm, content, scope = {}) {
 // <div v-for="(val, name, index) in object"></div>
 export function calcVForExpr(vm, expr, scope = {}) {
   const trimedExpr = expr.trim();
-  const inIdx = trimedExpr.indexOf(" in ");
+  const inIdx = trimedExpr.indexOf(' in ');
   const fStr = trimedExpr.substring(0, inIdx).trim();
   let keys = [];
-  if (fStr.startsWith("(")) {
+  if (fStr.startsWith('(')) {
     keys = fStr
       .substr(1, fStr.length - 2)
-      .split(",")
+      .split(',')
       .map((i) => i.trim());
   } else {
     keys.push(fStr);
@@ -47,18 +47,18 @@ export function calcVForExpr(vm, expr, scope = {}) {
   const valExpr = trimedExpr.substring(inIdx + 4);
   let listData = calcExpr(vm, valExpr, scope) || [];
   let isObj = false;
-  if (typeof listData === "number") {
+  if (typeof listData === 'number') {
     listData = Array(listData)
-      .fill(" ")
+      .fill(' ')
       .map((_, idx) => idx);
-  } else if (typeof listData === "string") {
+  } else if (typeof listData === 'string') {
     listData = Array(listData.length)
-      .fill(" ")
+      .fill(' ')
       .map((_, idx) => listData[idx]);
   }
   if (Array.isArray(listData)) {
     listData = listData.map((item, index) => ({ item, index, key: index }));
-  } else if (typeof listData === "object") {
+  } else if (typeof listData === 'object') {
     listData = Object.keys(listData).map((key, index) => ({
       item: listData[key],
       index,
@@ -67,20 +67,22 @@ export function calcVForExpr(vm, expr, scope = {}) {
     isObj = true;
   }
   return listData.map(({ item, index, key }) => {
-    const ret = {...scope};
+    const ret = { ...scope };
     keys.forEach((keyName, idx) => {
-      switch(idx){
+      switch (idx) {
         case 0:
           ret[keyName] = item;
-          return;
+          break;
         case 1:
           ret[keyName] = isObj ? key : index;
-          return;
+          break;
         case 2:
-          if(isObj){
+          if (isObj) {
             ret[keyName] = index;
-          }  
-          return;
+          }
+          break;
+        default:
+          break;
       }
     });
     return ret;

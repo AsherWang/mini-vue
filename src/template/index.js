@@ -1,10 +1,9 @@
-import { KElement as El } from "../vdom/index";
-import directives from "./directives";
-import { calcTextContent, calcExpr, calcVForExpr } from "./expr";
-
+import { KElement as El } from '../vdom/index';
+import directives from './directives';
+import { calcTextContent, calcExpr, calcVForExpr } from './expr';
 
 // 不太严谨不过基本可以了
-function isDynamicAttr(name){
+function isDynamicAttr(name) {
   return name.startsWith('v-bind:') || name.startsWith(':') || name.startsWith('v-show');
 }
 
@@ -16,21 +15,22 @@ class TplTag {
     this.children = [];
     // this.close = false; // 闭合了么
   }
+
   addAttr(key, value) {
     // 重复就覆盖
     // 或者这里警告一下
     this.attrs[key] = value;
   }
 
-  render(vm, parentScope){
+  render(vm, parentScope) {
     // 最简模式 v-for
-    if('v-for' in this.attrs){
-      return calcVForExpr(vm, this.attrs['v-for'], parentScope).map(scope => this.doRender(vm, scope));
+    if ('v-for' in this.attrs) {
+      return calcVForExpr(vm, this.attrs['v-for'], parentScope).map((scope) => this.doRender(vm, scope));
     }
     // 处理 v-if
-    if('v-if' in this.attrs){
+    if ('v-if' in this.attrs) {
       const val = calcExpr(vm, this.attrs['v-if']);
-      if(!val){
+      if (!val) {
         return null;
       }
     }
@@ -38,15 +38,15 @@ class TplTag {
   }
 
   doRender(vm, scope = {}) {
-    if (this.name === "root") {
+    if (this.name === 'root') {
       // 取child的第一个, 就还是先不支持多个‘根’元素吧
       return this.children.length ? this.children[0].render(vm) : null;
     }
-    if (this.name === "text") {
+    if (this.name === 'text') {
       return calcTextContent(vm, this.attrs.content, scope);
     }
     const attrs = {};
-    const orderedAttrNames = Object.keys(this.attrs).filter(name => !['v-for','v-if'].includes(name)).sort((a,b) => {
+    const orderedAttrNames = Object.keys(this.attrs).filter((name) => !['v-for', 'v-if'].includes(name)).sort((a, b) => {
       // 先静态后动态
       const as = isDynamicAttr(a) ? 0 : 1;
       const bs = isDynamicAttr(b) ? 0 : 1;
@@ -55,24 +55,25 @@ class TplTag {
     // 预期先处理静态的再附加动态的
     orderedAttrNames.forEach((name) => {
       const val = this.attrs[name];
+      // eslint-disable-next-line no-restricted-syntax
       for (const handler of directives) {
-        if (handler.call(vm, attrs, name, val, {scope})) {
+        if (handler.call(vm, attrs, name, val, { scope })) {
           break;
         }
       }
     });
     const createComp = vm.component(this.name);
-    if(createComp){
-      console.log('createComp new one')
+    if (createComp) {
+      console.log('createComp new one');
       const vdomOfComp = createComp({ $parentVm: vm, $attrs: attrs.bindGetters });
       // 这里应该把props整理成computed的形式
-      return vdomOfComp.$render()
+      return vdomOfComp.$render();
     }
 
     return El(
       this.name,
       attrs,
-      this.children.map((i) => i.render(vm, scope)).filter(i => i).flat(),
+      this.children.map((i) => i.render(vm, scope)).filter((i) => i).flat(),
     );
   }
 }
@@ -89,17 +90,17 @@ function getTillMatch(index, str, regex) {
 // 从index开始, 获取
 // 返回[subS, lastIndex]其中lastIndex是当前光标的位置,即目标ch的位置
 function getTillNextCh(index, str, chrs = null) {
-  if (chrs === null || chrs.length ===0) {
+  if (chrs === null || chrs.length === 0) {
     return [str.substring(index), str.length];
   }
   let nextIndex = index;
-  while(nextIndex < str.length){
-    if(chrs.includes(str[nextIndex])){
+  while (nextIndex < str.length) {
+    if (chrs.includes(str[nextIndex])) {
       break;
     }
     nextIndex += 1;
   }
-  if(nextIndex === str.length){
+  if (nextIndex === str.length) {
     nextIndex = -1;
   }
   // const nextIndex = str.indexOf(ch, index);
@@ -112,7 +113,7 @@ function getTillNextCh(index, str, chrs = null) {
 function doCompile(templateStr) {
   const elStack = [];
   // 根元素入栈
-  const root = new TplTag("root", {});
+  const root = new TplTag('root', {});
   elStack.push(root);
 
   if (!templateStr) return root.children;
@@ -121,9 +122,9 @@ function doCompile(templateStr) {
   let state = 0; // 准备收新tag
   let stackTop = root;
   const tmpAttr = {
-    name: "",
-    value: "",
-    separator: "",
+    name: '',
+    value: '',
+    separator: '',
     slash: 0,
   };
 
@@ -132,43 +133,44 @@ function doCompile(templateStr) {
   // state: 11 接收tag attr value
   // state: 111 开始接收tag attr value内容
 
-  while (1) {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
     if (state === 0) {
-      if (str[idx] === "<" && str[idx + 1] === "/") {
+      if (str[idx] === '<' && str[idx + 1] === '/') {
         const [, nextIdx] = getTillMatch(idx + 2, str, /^[^>]+/);
         idx = nextIdx + 1;
         elStack.pop();
         stackTop = elStack[elStack.length - 1];
-      } else if (str[idx] === "<") {
+      } else if (str[idx] === '<') {
         // tag start
-        const [tagname, nextIdx] = getTillNextCh(idx + 1, str, [" ",">"]);
+        const [tagname, nextIdx] = getTillNextCh(idx + 1, str, [' ', '>']);
         const newTag = new TplTag(tagname);
         stackTop.children.push(newTag);
         elStack.push(newTag);
         stackTop = newTag;
-        if(str[nextIdx] === ' '){
+        if (str[nextIdx] === ' ') {
           state = 1;
-        }else{
+        } else {
           state = 0;
         }
         idx = nextIdx + 1;
       } else {
         // text start
-        const [newText, nextIdx] = getTillNextCh(idx, str, ["<"]);
-        stackTop.children.push(new TplTag("text", { content: newText })); // 免压栈
+        const [newText, nextIdx] = getTillNextCh(idx, str, ['<']);
+        stackTop.children.push(new TplTag('text', { content: newText })); // 免压栈
         idx = nextIdx;
       }
     } else if (state === 1) {
       // 接收tag attr name 或者 自闭标记 或者 标签头结束标记
-      if (str[idx] === " ") {
+      if (str[idx] === ' ') {
         idx += 1;
-      } else if (str[idx] === "/" && str[idx + 1] === ">") {
+      } else if (str[idx] === '/' && str[idx + 1] === '>') {
         // 自闭出栈
         idx += 2;
         elStack.pop();
         stackTop = elStack[elStack.length - 1];
         state = 0;
-      } else if (str[idx] === ">") {
+      } else if (str[idx] === '>') {
         idx += 1;
         state = 0;
       } else {
@@ -189,7 +191,7 @@ function doCompile(templateStr) {
       }
     } else if (state === 111) {
       // value内容只要注意符号问题就行了，只要不是当前的tmpAttr.separator，而且没有反斜杠转义
-      if (str[idx] === "\\") {
+      if (str[idx] === '\\') {
         tmpAttr.slash = 1 - tmpAttr.slash;
         idx += 1;
         tmpAttr.value += str[idx];
@@ -201,10 +203,10 @@ function doCompile(templateStr) {
         } else {
           // 完事
           stackTop.addAttr(tmpAttr.name, tmpAttr.value);
-          tmpAttr.name = "";
-          tmpAttr.value = "";
+          tmpAttr.name = '';
+          tmpAttr.value = '';
           tmpAttr.slash = 0;
-          tmpAttr.separator = "";
+          tmpAttr.separator = '';
           state = 1;
           idx += 1;
         }
@@ -215,7 +217,7 @@ function doCompile(templateStr) {
     }
     if (idx >= str.length) {
       if (state !== 0) {
-        throw new Error("not normal exit state", state);
+        throw new Error('not normal exit state', state);
       }
       break;
     }
@@ -232,7 +234,7 @@ export default function compile(str) {
   try {
     return doCompile(str);
   } catch (error) {
-    console.log("err when compile template", error);
+    console.log('err when compile template', error);
     return null;
   }
 }

@@ -4,20 +4,27 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.MiniVue = factory());
 }(this, (function () { 'use strict';
 
+  /* eslint-disable no-underscore-dangle */
+  /* eslint-disable max-classes-per-file */
   // 问为何watcher要用栈来存，难道因为其中一个收集依赖到一半之后会触发另一个依赖收集？
   const watcherStacks = [];
   function getTopWatcher() {
     return watcherStacks.length ? watcherStacks[watcherStacks.length - 1] : null;
   }
 
-  class Dep {  // 依赖的单元
+  class Dep {
+    // 依赖的单元
     constructor() {
       this.subs = []; // 收集了本依赖的watcher列表
     }
-    notify() {  // 通知更新 , this.subs.slice()的意图是?
-      this.subs.forEach(sub => sub.update());
+
+    notify() {
+      // 通知更新 , this.subs.slice()的意图是?
+      this.subs.forEach((sub) => sub.update());
     }
-    depend() {  // 配合依赖收集
+
+    depend() {
+      // 配合依赖收集
       const watcher = getTopWatcher();
       if (watcher && !watcher.deps.includes(this)) {
         watcher.deps.push(this);
@@ -26,7 +33,8 @@
     }
   }
 
-  class Watcher {  // 用以收集依赖,被vm使用
+  class Watcher {
+    // 用以收集依赖,被vm使用
     constructor(vm, getter, cb) {
       this.vm = vm;
       this.deps = []; // 你在看别人
@@ -35,21 +43,26 @@
       this.__value = null;
       this.dirty = true;
       this.cb = cb; // 值有变化之后需要执行的回调函数
-      this.cb && this.getVal(); // 有回调函数的，先收集一波依赖
+      if (this.cb) this.getVal(); // 有回调函数的，先收集一波依赖
     }
+
     get value() {
       this.dep.depend();
-      this.dirty && this.getVal();
+      if (this.dirty) this.getVal();
       return this.__value;
     }
-    getVal() {  // 收集依赖,触发getter
+
+    getVal() {
+      // 收集依赖,触发getter
       watcherStacks.push(this);
       this.__value = this.getter.call(this.vm);
       watcherStacks.pop();
       this.dirty = false;
     }
-    update() { // 触发getter收集依赖
-      if(this.cb){
+
+    update() {
+      // 触发getter收集依赖
+      if (this.cb) {
         const preVal = this.value;
         this.getVal();
         this.cb.call(this.vm, this.__value, preVal);
@@ -60,19 +73,20 @@
     }
   }
 
-  function plantDep(obj, key, ctx) { // 种下依赖, vue中的defineReactive
+  function plantDep(obj, key, ctx) {
+    // 种下依赖, vue中的defineReactive
     const dep = new Dep();
     const propDescriptor = Object.getOwnPropertyDescriptor(obj, key);
-    let valGetter = propDescriptor.get || (() => obj[key]);
+    const valGetter = propDescriptor.get || (() => obj[key]);
     let val = valGetter.call(ctx);
-    let valSetter = propDescriptor.set || ((nv) => val = nv);
+    const valSetter = propDescriptor.set || ((nv) => { val = nv; });
     Object.defineProperty(obj, key, {
       get() {
         dep.depend();
         return val;
       },
       set(nv) {
-        if(nv === val){
+        if (nv === val) {
           return;
         }
         valSetter.call(ctx || obj, nv);
@@ -84,20 +98,28 @@
     return dep;
   }
 
-  class Observer { // 监察者, 给value种依赖
+  class Observer {
+    // 监察者, 给value种依赖
     constructor(value) {
       this.value = value;
-      Object.defineProperty(value, "__ob__", { value: this });
-      Array.isArray(value) ? this.observeArray(value) :this.observeObj(value); 
+      Object.defineProperty(value, '__ob__', { value: this });
+      if (Array.isArray(value)) {
+        this.observeArray(value);
+      } else {
+        this.observeObj(value);
+      }
     }
+
     observeObj(value) {
       Object.keys(value).forEach((key) => {
         const val = value[key];
+        // eslint-disable-next-line no-use-before-define
         observe(val); // 递归种依赖
         const dep = plantDep(value, key);
-        if(Array.isArray(val)){ // 对数组操作的监听
-          ['push', 'pop', 'splice', 'shift'].forEach(method => {
-            val[method] = function patchMethod(...args){
+        if (Array.isArray(val)) {
+          // 对数组操作的监听
+          ['push', 'pop', 'splice', 'shift'].forEach((method) => {
+            val[method] = function patchMethod(...args) {
               const ret = Array.prototype[method].apply(val, args);
               dep.notify();
               return ret;
@@ -106,168 +128,41 @@
         }
       });
     }
+
     observeArray(value) {
-      value.forEach(val => observe(val));
+      // eslint-disable-next-line no-use-before-define
+      value.forEach((val) => observe(val));
     }
   }
 
   function observe(value) {
-    if (!value || typeof value !== "object") return; // 空值,非obj不监察
-    if (Object.prototype.hasOwnProperty.call(value, "__ob__"))
-      return value.__ob__; // 已有监察者
+    if (!value || typeof value !== 'object') return null; // 空值,非obj不监察
+    if (Object.prototype.hasOwnProperty.call(value, '__ob__')) {
+      return value.__ob__;
+    } // 已有监察者
     return new Observer(value);
   }
 
   const touchedObjs = [];
 
-  function walk(obj){
+  function doWalk(obj) {
+    if (!obj || (!Array.isArray(obj) && typeof obj !== 'object') || touchedObjs.includes(obj)) {
+      return;
+    }
+    touchedObjs.push(obj);
+    if (Array.isArray(obj)) {
+      obj.forEach((v) => doWalk(v));
+    } else {
+      Object.values(obj).forEach((v) => doWalk(v));
+    }
+  }
+
+  function walk(obj) {
     doWalk(obj);
     touchedObjs.length = 0;
   }
 
-  function doWalk(obj){
-    if(!obj || (!Array.isArray(obj) && typeof obj !== 'object') || touchedObjs.includes(obj)){
-      return;
-    }
-    touchedObjs.push(obj);
-    if(Array.isArray(obj)){
-      obj.forEach(v => doWalk(v));
-    }else {
-      Object.values(obj).forEach(v => doWalk(v));
-    }
-  }
-
-  // 预期返回两个节点的变化了的属性
-  function diffProps(oldNode, newNode) {
-    const oldProps = oldNode.props;
-    const newProps = newNode.props;
-
-    const propsPatchs = {};
-    let isSame = true;
-
-    // 遍历旧的，找到修改了的
-    // 删掉的也属于修改了的
-    Object.keys(oldProps).forEach((key) => {
-      if (newProps[key] !== oldProps[key]) {
-        isSame = false;
-        propsPatchs[key] = [oldProps[key], newProps[key]];
-      }
-    });
-
-    // 遍历新的，找到新的属性
-    Object.keys(newProps).forEach((key) => {
-      if (!Object.prototype.hasOwnProperty.call(oldProps, key)) {
-        isSame = false;
-        propsPatchs[key] = [null, newProps[key]];
-      }
-    });
-
-    return isSame ? null : propsPatchs;
-  }
-
-  // 对节点应用变化的属性
-  // TODO: 注意事件的绑定问题
-  function applyProps(patch) {
-    const node = patch.node;
-    const props = patch.props;
-    if (typeof node === "string" || node.isText) {
-      // eslint-disable-next-line
-      console.warn("no way here: set props for a textnode");
-    }
-    if (props) {
-      const propNames = Object.keys(props);
-      if (propNames.length > 0) {
-        propNames.forEach((propName) => {
-          // eslint-disable-next-line
-          node.props[propName] = props[propName][1];
-          node.setAttr(propName, props[propName][1], props[propName][0]);
-        });
-      }
-    }
-  }
-
-  // diff处理两组孩子节点
-  function diffChildren(parentNode, oldArr, newArr, patchs = []) {
-    const length = Math.max(oldArr.length, newArr.length);
-    for (let index = 0; index < length; index += 1) {
-      const oldItem = index < oldArr.length ? oldArr[index] : null;
-      const newItem = index < newArr.length ? newArr[index] : null;
-      if (oldItem && newItem) {
-        diff(oldItem, newItem, patchs);
-      } else if (oldItem) {
-        patchs.push({
-          type: "REMOVE",
-          parentNode,
-          node: oldItem,
-        });
-      } else {
-        patchs.push({
-          type: "ADD",
-          parentNode,
-          node: newItem,
-        });
-      }
-    }
-    return patchs;
-  }
-
-  // 虚拟dom的diff算法
-  function diff(node, newNode, patchs = []) {
-    if (node.isText && newNode.isText) {
-      if (node.text !== newNode.text) {
-        patchs.push({
-          type: "TEXT",
-          node,
-          text: newNode.text,
-        });
-      }
-    } else if (node.tagName === newNode.tagName) {
-      // 如果是同一个tag名称
-      const propsPatchs = diffProps(node, newNode); // diff属性
-      if (propsPatchs) {
-        patchs.push({
-          node,
-          type: "PROPS",
-          props: propsPatchs,
-        });
-      }
-      // diff 子节点
-      diffChildren(node, node.children, newNode.children, patchs);
-    } else {
-      // 替换节点
-      patchs.push({
-        type: "REPLACE",
-        node,
-        newNode: newNode,
-      });
-    }
-    return patchs;
-  }
-
-  // 对虚拟dom应用diff结果
-  function applyDiff(patchs) {
-    if (patchs && patchs.length > 0) {
-      patchs.forEach((patch) => {
-        const { type, node, parentNode, newNode, text } = patch;
-        if (type === "REPLACE") {
-          node.replaceSelf(newNode); // vdom
-          node.$el.parentNode.replaceChild(newNode.render(), node.$el); // dom
-        } else if (type === "PROPS") {
-          applyProps(patch);
-        } else if (type === "TEXT") {
-          node.text = text; // vdom
-          node.$el.nodeValue = text; // dom
-        } else if (type === "ADD") {
-          parentNode.appendChild(node); // vdom
-          parentNode.$el.appendChild(node.render()); // dom
-        } else if (type === "REMOVE") {
-          node.removeSelf(); // vdom
-          node.$el.remove(); // dom
-        }
-      });
-    }
-  }
-
+  /* eslint-disable no-param-reassign */
   class _Element {
     constructor(tagName, props, children) {
       this.isComponent = false;
@@ -277,16 +172,11 @@
       this.children = children || []; // 孩子节点
       this.key = props ? props.key : undefined; // 备用，diff使用，目前还没用到
       this.isText = false; // 是否是纯文本节点
-      this.text = ""; // 如果是纯文本节点，text存入文本内容
+      this.text = ''; // 如果是纯文本节点，text存入文本内容
       this.children.forEach((child, index) => {
         if (child instanceof _Element) {
           child.parentNode = this;
-        }
-        // 这里先注释掉组件的实例
-        // else if (child instanceof _Component) {
-        //   this.children[index] = child.render();
-        // }
-        else {
+        } else {
           const textNode = new _Element();
           textNode.isText = true;
           textNode.text = child;
@@ -321,7 +211,7 @@
 
     // 设置当$el的属性
     setAttr(name, value, preValue) {
-      if (typeof value === "function" && name.startsWith("@")) {
+      if (typeof value === 'function' && name.startsWith('@')) {
         // 绑定事件
         const evtName = name.slice(1);
         // 可能需要判断是不是原生事件之类的，这里还没有自定义组件所以只有原生事件
@@ -334,17 +224,12 @@
           this.$el.removeEventListener(evtName, preValue);
         }
         this.$el.addEventListener(evtName, value);
+      } else if (name === 'value') {
+        this.$el.value = value;
+      } else if (value) {
+        this.$el.setAttribute(name, value);
       } else {
-        // 应该还有其他属性需要直接赋值而不是使用setAttr
-        if (name === "value") {
-          this.$el.value = value;
-        } else {
-          if (value) {
-            this.$el.setAttribute(name, value);
-          } else {
-            this.$el.removeAttribute(name);
-          }
-        }
+        this.$el.removeAttribute(name);
       }
     }
 
@@ -352,13 +237,14 @@
       this.children.push(child);
       child.parentNode = this;
     }
+
     // remove child
     removeChild(child) {
       const idx = this.children.indexOf(child);
       if (idx !== -1) {
         this.children.splice(idx, 1);
       } else {
-        console.log("_Element removeChild failed");
+        console.log('_Element removeChild failed');
       }
     }
 
@@ -368,27 +254,159 @@
         this.children[idx] = newChild;
         newChild.parentNode = this;
       } else {
-        console.log("_Element replaceChild failed");
+        console.log('_Element replaceChild failed');
       }
     }
 
     removeSelf() {
-      this.parentNode && this.parentNode.removeChild(this);
+      if (this.parentNode) this.parentNode.removeChild(this);
     }
 
     replaceSelf(newItem) {
-      this.parentNode && this.parentNode.replaceChild(this, newItem);
+      if (this.parentNode) this.parentNode.replaceChild(this, newItem);
     }
   }
 
   // 使得Element()和new Element()效果一样
-  // eslint-disable-next-line no-unused-vars
   const KElement = new Proxy(_Element, {
-    apply(target, thisArg, argumentsList) {
-      // eslint-disable-next-line
-      return new target(...argumentsList);
+    apply(Target, thisArg, argumentsList) {
+      return new Target(...argumentsList);
     },
   });
+
+  // 预期返回两个节点的变化了的属性
+  function diffProps(oldNode, newNode) {
+    const oldProps = oldNode.props;
+    const newProps = newNode.props;
+
+    const propsPatchs = {};
+    let isSame = true;
+
+    // 遍历旧的，找到修改了的
+    // 删掉的也属于修改了的
+    Object.keys(oldProps).forEach((key) => {
+      if (newProps[key] !== oldProps[key]) {
+        isSame = false;
+        propsPatchs[key] = [oldProps[key], newProps[key]];
+      }
+    });
+
+    // 遍历新的，找到新的属性
+    Object.keys(newProps).forEach((key) => {
+      if (!Object.prototype.hasOwnProperty.call(oldProps, key)) {
+        isSame = false;
+        propsPatchs[key] = [null, newProps[key]];
+      }
+    });
+
+    return isSame ? null : propsPatchs;
+  }
+
+  // 对节点应用变化的属性
+  // TODO: 注意事件的绑定问题
+  function applyProps(patch) {
+    const { node } = patch;
+    const { props } = patch;
+    if (typeof node === 'string' || node.isText) {
+      // eslint-disable-next-line
+      console.warn("no way here: set props for a textnode");
+    }
+    if (props) {
+      const propNames = Object.keys(props);
+      if (propNames.length > 0) {
+        propNames.forEach((propName) => {
+          // eslint-disable-next-line
+          node.props[propName] = props[propName][1];
+          node.setAttr(propName, props[propName][1], props[propName][0]);
+        });
+      }
+    }
+  }
+
+  // diff处理两组孩子节点
+  function diffChildren(parentNode, oldArr, newArr, patchs = []) {
+    const length = Math.max(oldArr.length, newArr.length);
+    for (let index = 0; index < length; index += 1) {
+      const oldItem = index < oldArr.length ? oldArr[index] : null;
+      const newItem = index < newArr.length ? newArr[index] : null;
+      if (oldItem && newItem) {
+        // eslint-disable-next-line no-use-before-define
+        diff(oldItem, newItem, patchs);
+      } else if (oldItem) {
+        patchs.push({
+          type: 'REMOVE',
+          parentNode,
+          node: oldItem,
+        });
+      } else {
+        patchs.push({
+          type: 'ADD',
+          parentNode,
+          node: newItem,
+        });
+      }
+    }
+    return patchs;
+  }
+
+  // 虚拟dom的diff算法
+  function diff(node, newNode, patchs = []) {
+    if (node.isText && newNode.isText) {
+      if (node.text !== newNode.text) {
+        patchs.push({
+          type: 'TEXT',
+          node,
+          text: newNode.text,
+        });
+      }
+    } else if (node.tagName === newNode.tagName) {
+      // 如果是同一个tag名称
+      const propsPatchs = diffProps(node, newNode); // diff属性
+      if (propsPatchs) {
+        patchs.push({
+          node,
+          type: 'PROPS',
+          props: propsPatchs,
+        });
+      }
+      // diff 子节点
+      diffChildren(node, node.children, newNode.children, patchs);
+    } else {
+      // 替换节点
+      patchs.push({
+        type: 'REPLACE',
+        node,
+        newNode,
+      });
+    }
+    return patchs;
+  }
+
+  // 对虚拟dom应用diff结果
+  function applyDiff(patchs) {
+    if (patchs && patchs.length > 0) {
+      patchs.forEach((patch) => {
+        const {
+          type, node, parentNode, newNode, text,
+        } = patch;
+        if (type === 'REPLACE') {
+          node.replaceSelf(newNode); // vdom
+          node.$el.parentNode.replaceChild(newNode.render(), node.$el); // dom
+        } else if (type === 'PROPS') {
+          applyProps(patch);
+        } else if (type === 'TEXT') {
+          node.text = text; // vdom
+          node.$el.nodeValue = text; // dom
+        } else if (type === 'ADD') {
+          parentNode.appendChild(node); // vdom
+          parentNode.$el.appendChild(node.render()); // dom
+        } else if (type === 'REMOVE') {
+          node.removeSelf(); // vdom
+          node.$el.remove(); // dom
+        }
+      });
+    }
+  }
 
   // 对目前只支持单变量表达式
 
@@ -413,7 +431,7 @@
     exprs.forEach((expr) => {
       const rExpr = expr.substr(2, expr.length - 4);
       const val = calcExpr(vm, rExpr, scope);
-      ret = ret.replace(new RegExp(expr.replace(/\{/, "\\{"), "g"), val);
+      ret = ret.replace(new RegExp(expr.replace(/\{/, '\\{'), 'g'), val);
     });
     return ret;
   }
@@ -425,13 +443,13 @@
   // <div v-for="(val, name, index) in object"></div>
   function calcVForExpr(vm, expr, scope = {}) {
     const trimedExpr = expr.trim();
-    const inIdx = trimedExpr.indexOf(" in ");
+    const inIdx = trimedExpr.indexOf(' in ');
     const fStr = trimedExpr.substring(0, inIdx).trim();
     let keys = [];
-    if (fStr.startsWith("(")) {
+    if (fStr.startsWith('(')) {
       keys = fStr
         .substr(1, fStr.length - 2)
-        .split(",")
+        .split(',')
         .map((i) => i.trim());
     } else {
       keys.push(fStr);
@@ -439,18 +457,18 @@
     const valExpr = trimedExpr.substring(inIdx + 4);
     let listData = calcExpr(vm, valExpr, scope) || [];
     let isObj = false;
-    if (typeof listData === "number") {
+    if (typeof listData === 'number') {
       listData = Array(listData)
-        .fill(" ")
+        .fill(' ')
         .map((_, idx) => idx);
-    } else if (typeof listData === "string") {
+    } else if (typeof listData === 'string') {
       listData = Array(listData.length)
-        .fill(" ")
+        .fill(' ')
         .map((_, idx) => listData[idx]);
     }
     if (Array.isArray(listData)) {
       listData = listData.map((item, index) => ({ item, index, key: index }));
-    } else if (typeof listData === "object") {
+    } else if (typeof listData === 'object') {
       listData = Object.keys(listData).map((key, index) => ({
         item: listData[key],
         index,
@@ -459,25 +477,27 @@
       isObj = true;
     }
     return listData.map(({ item, index, key }) => {
-      const ret = {...scope};
+      const ret = { ...scope };
       keys.forEach((keyName, idx) => {
-        switch(idx){
+        switch (idx) {
           case 0:
             ret[keyName] = item;
-            return;
+            break;
           case 1:
             ret[keyName] = isObj ? key : index;
-            return;
+            break;
           case 2:
-            if(isObj){
+            if (isObj) {
               ret[keyName] = index;
-            }  
-            return;
+            }
+            break;
         }
       });
       return ret;
     });
   }
+
+  /* eslint-disable no-param-reassign */
 
   const directives = [];
 
@@ -485,38 +505,34 @@
   function vBind(attrs, name, val, opt = {}) {
     const scope = (opt && opt.scope) || {};
     // attrs.bindGetters = attrs.bindGetters || {};
-    if(!attrs.bindGetters){
+    if (!attrs.bindGetters) {
       Object.defineProperty(attrs, 'bindGetters', {
         enumerable: false,
         value: {},
       });
     }
     // v-bind:name,:name,v-bind
-    if (name === "v-bind") {
+    if (name === 'v-bind') {
       const obj = calcExpr(this, val, scope);
-      if (obj && typeof obj === "object") {
+      if (obj && typeof obj === 'object') {
         Object.assign(attrs, obj);
-        Object.keys(obj).forEach(name => {
-          Object.defineProperty(attrs.bindGetters, name, {
+        Object.keys(obj).forEach((attrName) => {
+          Object.defineProperty(attrs.bindGetters, attrName, {
             configurable: true,
             enumerable: true,
-            get: () => {
-              return calcExpr(this, val, scope)[name];
-            }
+            get: () => calcExpr(this, val, scope)[attrName],
           });
         });
       }
       return true;
-    } else if (name.startsWith("v-bind:") || name.startsWith(":")) {
-      const [, rName] = name.split(":");
+    } if (name.startsWith('v-bind:') || name.startsWith(':')) {
+      const [, rName] = name.split(':');
       attrs[rName] = calcExpr(this, val, scope);
       Object.defineProperty(attrs.bindGetters, rName, {
         configurable: true,
         enumerable: true,
-        get: () => {
-          // console.log('???',rName);
-          return calcExpr(this, val, scope);
-        }
+        get: () => calcExpr(this, val, scope),
+
       });
       return true;
     }
@@ -528,7 +544,7 @@
   // v-on
   function vOn(attrs, name, val) {
     // v-on:name, @name
-    if (name.startsWith("v-on:") || name.startsWith("@")) {
+    if (name.startsWith('v-on:') || name.startsWith('@')) {
       const [, rName] = name.split(/[:@]/);
       attrs[`@${rName}`] = calcCallbackExpr(this, val);
       // console.log("evt name", rName);
@@ -540,7 +556,7 @@
   // v-show
   // 表达式依然只支持单单变量
   function vShow(attrs, name, val) {
-    if (name === "v-show") {
+    if (name === 'v-show') {
       const show = calcExpr(this, val);
       if (!show) {
         if (attrs.style) {
@@ -566,7 +582,7 @@
   directives.push(other);
 
   // 不太严谨不过基本可以了
-  function isDynamicAttr(name){
+  function isDynamicAttr(name) {
     return name.startsWith('v-bind:') || name.startsWith(':') || name.startsWith('v-show');
   }
 
@@ -578,21 +594,22 @@
       this.children = [];
       // this.close = false; // 闭合了么
     }
+
     addAttr(key, value) {
       // 重复就覆盖
       // 或者这里警告一下
       this.attrs[key] = value;
     }
 
-    render(vm, parentScope){
+    render(vm, parentScope) {
       // 最简模式 v-for
-      if('v-for' in this.attrs){
-        return calcVForExpr(vm, this.attrs['v-for'], parentScope).map(scope => this.doRender(vm, scope));
+      if ('v-for' in this.attrs) {
+        return calcVForExpr(vm, this.attrs['v-for'], parentScope).map((scope) => this.doRender(vm, scope));
       }
       // 处理 v-if
-      if('v-if' in this.attrs){
+      if ('v-if' in this.attrs) {
         const val = calcExpr(vm, this.attrs['v-if']);
-        if(!val){
+        if (!val) {
           return null;
         }
       }
@@ -600,15 +617,15 @@
     }
 
     doRender(vm, scope = {}) {
-      if (this.name === "root") {
+      if (this.name === 'root') {
         // 取child的第一个, 就还是先不支持多个‘根’元素吧
         return this.children.length ? this.children[0].render(vm) : null;
       }
-      if (this.name === "text") {
+      if (this.name === 'text') {
         return calcTextContent(vm, this.attrs.content, scope);
       }
       const attrs = {};
-      const orderedAttrNames = Object.keys(this.attrs).filter(name => !['v-for','v-if'].includes(name)).sort((a,b) => {
+      const orderedAttrNames = Object.keys(this.attrs).filter((name) => !['v-for', 'v-if'].includes(name)).sort((a, b) => {
         // 先静态后动态
         const as = isDynamicAttr(a) ? 0 : 1;
         const bs = isDynamicAttr(b) ? 0 : 1;
@@ -617,24 +634,25 @@
       // 预期先处理静态的再附加动态的
       orderedAttrNames.forEach((name) => {
         const val = this.attrs[name];
+        // eslint-disable-next-line no-restricted-syntax
         for (const handler of directives) {
-          if (handler.call(vm, attrs, name, val, {scope})) {
+          if (handler.call(vm, attrs, name, val, { scope })) {
             break;
           }
         }
       });
       const createComp = vm.component(this.name);
-      if(createComp){
+      if (createComp) {
         console.log('createComp new one');
         const vdomOfComp = createComp({ $parentVm: vm, $attrs: attrs.bindGetters });
         // 这里应该把props整理成computed的形式
-        return vdomOfComp.$render()
+        return vdomOfComp.$render();
       }
 
       return KElement(
         this.name,
         attrs,
-        this.children.map((i) => i.render(vm, scope)).filter(i => i).flat(),
+        this.children.map((i) => i.render(vm, scope)).filter((i) => i).flat(),
       );
     }
   }
@@ -651,17 +669,17 @@
   // 从index开始, 获取
   // 返回[subS, lastIndex]其中lastIndex是当前光标的位置,即目标ch的位置
   function getTillNextCh(index, str, chrs = null) {
-    if (chrs === null || chrs.length ===0) {
+    if (chrs === null || chrs.length === 0) {
       return [str.substring(index), str.length];
     }
     let nextIndex = index;
-    while(nextIndex < str.length){
-      if(chrs.includes(str[nextIndex])){
+    while (nextIndex < str.length) {
+      if (chrs.includes(str[nextIndex])) {
         break;
       }
       nextIndex += 1;
     }
-    if(nextIndex === str.length){
+    if (nextIndex === str.length) {
       nextIndex = -1;
     }
     // const nextIndex = str.indexOf(ch, index);
@@ -674,7 +692,7 @@
   function doCompile(templateStr) {
     const elStack = [];
     // 根元素入栈
-    const root = new TplTag("root", {});
+    const root = new TplTag('root', {});
     elStack.push(root);
 
     if (!templateStr) return root.children;
@@ -683,9 +701,9 @@
     let state = 0; // 准备收新tag
     let stackTop = root;
     const tmpAttr = {
-      name: "",
-      value: "",
-      separator: "",
+      name: '',
+      value: '',
+      separator: '',
       slash: 0,
     };
 
@@ -694,43 +712,44 @@
     // state: 11 接收tag attr value
     // state: 111 开始接收tag attr value内容
 
-    while (1) {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
       if (state === 0) {
-        if (str[idx] === "<" && str[idx + 1] === "/") {
+        if (str[idx] === '<' && str[idx + 1] === '/') {
           const [, nextIdx] = getTillMatch(idx + 2, str, /^[^>]+/);
           idx = nextIdx + 1;
           elStack.pop();
           stackTop = elStack[elStack.length - 1];
-        } else if (str[idx] === "<") {
+        } else if (str[idx] === '<') {
           // tag start
-          const [tagname, nextIdx] = getTillNextCh(idx + 1, str, [" ",">"]);
+          const [tagname, nextIdx] = getTillNextCh(idx + 1, str, [' ', '>']);
           const newTag = new TplTag(tagname);
           stackTop.children.push(newTag);
           elStack.push(newTag);
           stackTop = newTag;
-          if(str[nextIdx] === ' '){
+          if (str[nextIdx] === ' ') {
             state = 1;
-          }else {
+          } else {
             state = 0;
           }
           idx = nextIdx + 1;
         } else {
           // text start
-          const [newText, nextIdx] = getTillNextCh(idx, str, ["<"]);
-          stackTop.children.push(new TplTag("text", { content: newText })); // 免压栈
+          const [newText, nextIdx] = getTillNextCh(idx, str, ['<']);
+          stackTop.children.push(new TplTag('text', { content: newText })); // 免压栈
           idx = nextIdx;
         }
       } else if (state === 1) {
         // 接收tag attr name 或者 自闭标记 或者 标签头结束标记
-        if (str[idx] === " ") {
+        if (str[idx] === ' ') {
           idx += 1;
-        } else if (str[idx] === "/" && str[idx + 1] === ">") {
+        } else if (str[idx] === '/' && str[idx + 1] === '>') {
           // 自闭出栈
           idx += 2;
           elStack.pop();
           stackTop = elStack[elStack.length - 1];
           state = 0;
-        } else if (str[idx] === ">") {
+        } else if (str[idx] === '>') {
           idx += 1;
           state = 0;
         } else {
@@ -751,7 +770,7 @@
         }
       } else if (state === 111) {
         // value内容只要注意符号问题就行了，只要不是当前的tmpAttr.separator，而且没有反斜杠转义
-        if (str[idx] === "\\") {
+        if (str[idx] === '\\') {
           tmpAttr.slash = 1 - tmpAttr.slash;
           idx += 1;
           tmpAttr.value += str[idx];
@@ -763,10 +782,10 @@
           } else {
             // 完事
             stackTop.addAttr(tmpAttr.name, tmpAttr.value);
-            tmpAttr.name = "";
-            tmpAttr.value = "";
+            tmpAttr.name = '';
+            tmpAttr.value = '';
             tmpAttr.slash = 0;
-            tmpAttr.separator = "";
+            tmpAttr.separator = '';
             state = 1;
             idx += 1;
           }
@@ -777,7 +796,7 @@
       }
       if (idx >= str.length) {
         if (state !== 0) {
-          throw new Error("not normal exit state", state);
+          throw new Error('not normal exit state', state);
         }
         break;
       }
@@ -794,7 +813,7 @@
     try {
       return doCompile(str);
     } catch (error) {
-      console.log("err when compile template", error);
+      console.log('err when compile template', error);
       return null;
     }
   }
@@ -803,23 +822,22 @@
   // Vue.component( id, [definition] )
 
   // 大写字母变为-小写
-  function normalizeName(id){
-    return Array(id.length).fill('').map((_,idx) => {
+  function normalizeName(id) {
+    return Array(id.length).fill('').map((_, idx) => {
       const ch = id[idx];
-      const isCapital = ch.charCodeAt() >= 65 && ch.charCodeAt() <=90;
+      const isCapital = ch.charCodeAt() >= 65 && ch.charCodeAt() <= 90;
       return isCapital ? `${idx !== 0 ? '-' : ''}${ch.toLowerCase()}` : ch;
     }).join('');
   }
 
-
-
   function create(MiniVue, global) {
-    let comps = {}; // 组件库
-    return function(id, definition){
+    const comps = {}; // 组件库
+    // eslint-disable-next-line consistent-return
+    return function component(id, definition) {
       const nId = normalizeName(id);
       if (definition) {
-        comps[nId] = function createInstance(options){
-          const fOpts = Object.assign({}, definition, options);
+        comps[nId] = function createInstance(options) {
+          const fOpts = { ...definition, ...options };
           return new MiniVue(fOpts);
         };
         comps[nId].options = definition;
@@ -846,6 +864,7 @@
     Object.keys(src).forEach((key) => {
       defineProperty(dest, key, {
         set: function setter(nv) {
+          // eslint-disable-next-line no-param-reassign
           src[key] = nv;
         },
         get: function getter() {
@@ -857,12 +876,13 @@
 
   function MiniVue(options) {
     const vm = this;
-    
+
     vm.$options = options;
 
     // 简单处理el
     if (options.el) {
-      if (typeof options.el === "string") {
+      if (typeof options.el === 'string') {
+        // eslint-disable-next-line no-undef
         vm.$el = document.querySelector(options.el);
       } else {
         vm.$el = options.el;
@@ -873,27 +893,27 @@
     vm.component = vm.isRoot ? MiniVue.component : component.create(MiniVue, MiniVue.component);
     // 简单处理components
     const components = options.components || {};
-    Object.keys(components).forEach(id => vm.component(id, components[id]));
+    Object.keys(components).forEach((id) => vm.component(id, components[id]));
 
     // 简单处理prop, 数据解析和绑定放到template的render中
     // 像处理computed一样处理props，只不过上下文是parentVm
-    if(options.$parentVm){
+    if (options.$parentVm) {
       vm.$parentVm = options.$parentVm;
       let props = options.props || {};
-      let tmp = props;
-      if(Array.isArray(props)){
-        props.forEach(name => {});
+      const tmp = {};
+      if (Array.isArray(props)) {
+        props.forEach((name) => { tmp[name] = {}; });
       }
       props = {};
       Object.keys(tmp).forEach((key) => {
         const getter = () => options.$attrs[key];
         const watcher = new Watcher(vm, getter);
         defineProperty(props, key, {
-          get: function getter() {
+          get: function Kgetter() {
             return watcher.value;
           },
-          set: function setter(nv) {
-            console.warn("cannot set computed value with", nv);
+          set: function Ksetter(nv) {
+            console.warn('cannot set computed value with', nv);
           },
         });
       });
@@ -904,7 +924,7 @@
 
     // 简单处理data
     let data = options.data || {};
-    data = typeof options.data === "function" ? options.data.call(vm) : data;
+    data = typeof options.data === 'function' ? options.data.call(vm) : data;
     observe(data);
     vm.$data = data;
     assignProperties(data, vm);
@@ -916,11 +936,11 @@
       const getter = computed[key];
       const watcher = new Watcher(vm, getter);
       defineProperty(computedData, key, {
-        get: function getter() {
+        get: function Kgetter() {
           return watcher.value;
         },
-        set: function setter(nv) {
-          console.warn("cannot set computed value with", nv);
+        set: function Ksetter(nv) {
+          console.warn('cannot set computed value with', nv);
         },
       });
     });
@@ -936,30 +956,29 @@
     // 简单处理watch
     // key和key.sub.sub两种形式
     const watch = options.watch || {};
+    vm.$watchers = [];
     Object.keys(watch).forEach((key) => {
       const method = watch[key];
       const getter = () => {
         let val = vm;
-        key.split(".").forEach((k) => (val = val[k]));
+        key.split('.').forEach((k) => { val = val[k]; });
         return val;
       };
-      new Watcher(vm, getter, (...args) => method.apply(vm, args));
+      const watcher = new Watcher(vm, getter, (...args) => method.apply(vm, args));
+      vm.$watchers.push(watcher);
     });
 
-
     // 解析模板
-    vm.$elTree = compile(options.template || "");
+    vm.$elTree = compile(options.template || '');
     vm.$elTree.isComponent = !!vm.$parentVm;
     // 化为render函数
-    vm.$render = () => {
-      return vm.$elTree.render(vm);
-    };
+    vm.$render = () => vm.$elTree.render(vm);
 
     // 处理render
     // 触发重绘的方式有： props改变， data改变，computed改变，
     // vm.$render = options.render || null;
     vm.render = () => {
-      if (!vm.$render) return null;
+      if (!vm.$render) return;
       vm.$vdom = vm.$render.call(vm);
       // console.log('vm.$vdom',vm.$vdom);
       if (vm.$preVdom) {
@@ -968,8 +987,8 @@
         // console.log('diff result', result);
         applyDiff(result);
       } else {
-        if(vm.isRoot){
-          vm.$el.firstElementChild && vm.$el.firstElementChild.remove();
+        if (vm.isRoot) {
+          if (vm.$el.firstElementChild) vm.$el.firstElementChild.remove();
           vm.$el.appendChild(vm.$vdom.render());
         }
         // vm.$el.replaceWith(vm.$vdom.render());
@@ -977,17 +996,16 @@
       }
     };
 
-
     // 根节点的第一次渲染
-    if(vm.$el){
+    if (vm.$el) {
       // 重绘触发
       vm.renderWatcher = new Watcher(
         vm,
-        function walkUpsidedown() {
+        (() => {
           walk(data);
           walk(computedData);
-        },
-        vm.render
+        }),
+        vm.render,
       );
       vm.render(); // 渲染
     }

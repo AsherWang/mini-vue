@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 class _Element {
   constructor(tagName, props, children) {
     this.isComponent = false;
@@ -7,16 +8,11 @@ class _Element {
     this.children = children || []; // 孩子节点
     this.key = props ? props.key : undefined; // 备用，diff使用，目前还没用到
     this.isText = false; // 是否是纯文本节点
-    this.text = ""; // 如果是纯文本节点，text存入文本内容
+    this.text = ''; // 如果是纯文本节点，text存入文本内容
     this.children.forEach((child, index) => {
       if (child instanceof _Element) {
         child.parentNode = this;
-      }
-      // 这里先注释掉组件的实例
-      // else if (child instanceof _Component) {
-      //   this.children[index] = child.render();
-      // }
-      else {
+      } else {
         const textNode = new _Element();
         textNode.isText = true;
         textNode.text = child;
@@ -51,7 +47,7 @@ class _Element {
 
   // 设置当$el的属性
   setAttr(name, value, preValue) {
-    if (typeof value === "function" && name.startsWith("@")) {
+    if (typeof value === 'function' && name.startsWith('@')) {
       // 绑定事件
       const evtName = name.slice(1);
       // 可能需要判断是不是原生事件之类的，这里还没有自定义组件所以只有原生事件
@@ -64,17 +60,12 @@ class _Element {
         this.$el.removeEventListener(evtName, preValue);
       }
       this.$el.addEventListener(evtName, value);
+    } else if (name === 'value') {
+      this.$el.value = value;
+    } else if (value) {
+      this.$el.setAttribute(name, value);
     } else {
-      // 应该还有其他属性需要直接赋值而不是使用setAttr
-      if (name === "value") {
-        this.$el.value = value;
-      } else {
-        if (value) {
-          this.$el.setAttribute(name, value);
-        } else {
-          this.$el.removeAttribute(name);
-        }
-      }
+      this.$el.removeAttribute(name);
     }
   }
 
@@ -82,13 +73,14 @@ class _Element {
     this.children.push(child);
     child.parentNode = this;
   }
+
   // remove child
   removeChild(child) {
     const idx = this.children.indexOf(child);
     if (idx !== -1) {
       this.children.splice(idx, 1);
     } else {
-      console.log("_Element removeChild failed");
+      console.log('_Element removeChild failed');
     }
   }
 
@@ -98,24 +90,24 @@ class _Element {
       this.children[idx] = newChild;
       newChild.parentNode = this;
     } else {
-      console.log("_Element replaceChild failed");
+      console.log('_Element replaceChild failed');
     }
   }
 
   removeSelf() {
-    this.parentNode && this.parentNode.removeChild(this);
+    if (this.parentNode) this.parentNode.removeChild(this);
   }
 
   replaceSelf(newItem) {
-    this.parentNode && this.parentNode.replaceChild(this, newItem);
+    if (this.parentNode) this.parentNode.replaceChild(this, newItem);
   }
 }
 
 // 使得Element()和new Element()效果一样
-// eslint-disable-next-line no-unused-vars
-export const KElement = new Proxy(_Element, {
-  apply(target, thisArg, argumentsList) {
-    // eslint-disable-next-line
-    return new target(...argumentsList);
+const KElement = new Proxy(_Element, {
+  apply(Target, thisArg, argumentsList) {
+    return new Target(...argumentsList);
   },
 });
+
+export default KElement;

@@ -29,9 +29,9 @@ function diffProps(oldNode, newNode) {
 // 对节点应用变化的属性
 // TODO: 注意事件的绑定问题
 function applyProps(patch) {
-  const node = patch.node;
-  const props = patch.props;
-  if (typeof node === "string" || node.isText) {
+  const { node } = patch;
+  const { props } = patch;
+  if (typeof node === 'string' || node.isText) {
     // eslint-disable-next-line
     console.warn("no way here: set props for a textnode");
   }
@@ -54,16 +54,17 @@ function diffChildren(parentNode, oldArr, newArr, patchs = []) {
     const oldItem = index < oldArr.length ? oldArr[index] : null;
     const newItem = index < newArr.length ? newArr[index] : null;
     if (oldItem && newItem) {
+      // eslint-disable-next-line no-use-before-define
       diff(oldItem, newItem, patchs);
     } else if (oldItem) {
       patchs.push({
-        type: "REMOVE",
+        type: 'REMOVE',
         parentNode,
         node: oldItem,
       });
     } else {
       patchs.push({
-        type: "ADD",
+        type: 'ADD',
         parentNode,
         node: newItem,
       });
@@ -77,7 +78,7 @@ export function diff(node, newNode, patchs = []) {
   if (node.isText && newNode.isText) {
     if (node.text !== newNode.text) {
       patchs.push({
-        type: "TEXT",
+        type: 'TEXT',
         node,
         text: newNode.text,
       });
@@ -88,7 +89,7 @@ export function diff(node, newNode, patchs = []) {
     if (propsPatchs) {
       patchs.push({
         node,
-        type: "PROPS",
+        type: 'PROPS',
         props: propsPatchs,
       });
     }
@@ -97,9 +98,9 @@ export function diff(node, newNode, patchs = []) {
   } else {
     // 替换节点
     patchs.push({
-      type: "REPLACE",
+      type: 'REPLACE',
       node,
-      newNode: newNode,
+      newNode,
     });
   }
   return patchs;
@@ -109,19 +110,21 @@ export function diff(node, newNode, patchs = []) {
 export function applyDiff(patchs) {
   if (patchs && patchs.length > 0) {
     patchs.forEach((patch) => {
-      const { type, node, parentNode, newNode, text } = patch;
-      if (type === "REPLACE") {
+      const {
+        type, node, parentNode, newNode, text,
+      } = patch;
+      if (type === 'REPLACE') {
         node.replaceSelf(newNode); // vdom
         node.$el.parentNode.replaceChild(newNode.render(), node.$el); // dom
-      } else if (type === "PROPS") {
+      } else if (type === 'PROPS') {
         applyProps(patch);
-      } else if (type === "TEXT") {
+      } else if (type === 'TEXT') {
         node.text = text; // vdom
         node.$el.nodeValue = text; // dom
-      } else if (type === "ADD") {
+      } else if (type === 'ADD') {
         parentNode.appendChild(node); // vdom
         parentNode.$el.appendChild(node.render()); // dom
-      } else if (type === "REMOVE") {
+      } else if (type === 'REMOVE') {
         node.removeSelf(); // vdom
         node.$el.remove(); // dom
       }
