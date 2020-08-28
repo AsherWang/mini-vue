@@ -2,6 +2,7 @@
 class _Element {
   constructor(tagName, props, children) {
     this.isComponent = false;
+    this.instanceCreator = null;
     this.parentNode = null;
     this.tagName = tagName; // 对应的dom节点标签
     this.props = props || {}; // 属性
@@ -22,9 +23,29 @@ class _Element {
     });
   }
 
+  setComponent(instanceCreator) {
+    this.isComponent = true;
+    this.instanceCreator = instanceCreator;
+    return this;
+  }
+
   // 预期返回结果是一个HTML DOM节点对象
   // 如果children有内容，按顺序将child渲染并添加到父节点内部
   render() {
+    if (this.isComponent) {
+      if (this.instanceCreator.instance === null) {
+        this.instanceCreator.instance = this.instanceCreator.func();
+        // 创建完成组件之后
+        // 直接render出来dom
+      }
+      // this.instanceCreator.instance.render();
+      const realEl = this.instanceCreator.instance.$vdom.render();
+      this.instanceCreator.instance.$el = realEl;
+      this.instanceCreator.instance.$preVdom.$el = realEl;
+      this.$el = realEl;
+      if (this.instanceCreator.$attrs.style) realEl.style = this.instanceCreator.$attrs.style;
+      return realEl;
+    }
     if (this.isText) {
       const el = document.createTextNode(this.text);
       this.$el = el;

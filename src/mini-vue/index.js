@@ -135,9 +135,7 @@ function MiniVue(options) {
     vm.$vdom = vm.$render.call(vm);
     // console.log('vm.$vdom',vm.$vdom);
     if (vm.$preVdom) {
-      // console.log(vm.$preVdom,vm.$vdom)
-      const result = diff(vm.$preVdom, this.$vdom);
-      // console.log('diff result', result);
+      const result = diff(vm.$preVdom, vm.$vdom);
       applyDiff(result);
     } else {
       if (vm.isRoot) {
@@ -152,19 +150,19 @@ function MiniVue(options) {
   };
 
   // 根节点的第一次渲染
-  if (vm.$el) {
-    // 重绘触发
-    vm.renderWatcher = new Watcher(
-      vm,
-      (() => {
-        walk(data);
-        walk(computedData);
-      }),
-      vm.render,
-    );
-    vm.render(); // 渲染
-  }
+  // if (vm.$el) {
+  // 重绘触发
+  vm.renderWatcher = new Watcher(
+    vm,
+    (() => {
+      walk(data);
+      walk(computedData);
+    }),
+    vm.render,
+  );
+  vm.render(); // 渲染
 }
+// }
 
 // 组件
 MiniVue.component = component.create(MiniVue);

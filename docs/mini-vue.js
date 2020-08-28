@@ -166,6 +166,7 @@
   class _Element {
     constructor(tagName, props, children) {
       this.isComponent = false;
+      this.instanceCreator = null;
       this.parentNode = null;
       this.tagName = tagName; // 对应的dom节点标签
       this.props = props || {}; // 属性
@@ -186,9 +187,29 @@
       });
     }
 
+    setComponent(instanceCreator) {
+      this.isComponent = true;
+      this.instanceCreator = instanceCreator;
+      return this;
+    }
+
     // 预期返回结果是一个HTML DOM节点对象
     // 如果children有内容，按顺序将child渲染并添加到父节点内部
     render() {
+      if (this.isComponent) {
+        if (this.instanceCreator.instance === null) {
+          this.instanceCreator.instance = this.instanceCreator.func();
+          // 创建完成组件之后
+          // 直接render出来dom
+        }
+        // this.instanceCreator.instance.render();
+        const realEl = this.instanceCreator.instance.$vdom.render();
+        this.instanceCreator.instance.$el = realEl;
+        this.instanceCreator.instance.$preVdom.$el = realEl;
+        this.$el = realEl;
+        if (this.instanceCreator.$attrs.style) realEl.style = this.instanceCreator.$attrs.style;
+        return realEl;
+      }
       if (this.isText) {
         const el = document.createTextNode(this.text);
         this.$el = el;
@@ -351,6 +372,25 @@
 
   // 虚拟dom的diff算法
   function diff(node, newNode, patchs = []) {
+    if (node.isComponent && newNode.isComponent) {
+      if (node.instanceCreator.hash !== newNode.instanceCreator.hash) {
+        patchs.push({
+          type: 'REPLACE',
+          node,
+          newNode,
+        });
+      }
+      return patchs;
+    }
+    if (node.isComponent !== newNode.isComponent) {
+      // 替换节点
+      patchs.push({
+        type: 'REPLACE',
+        node,
+        newNode,
+      });
+      return patchs;
+    }
     if (node.isText && newNode.isText) {
       if (node.text !== newNode.text) {
         patchs.push({
@@ -592,7 +632,14 @@
       this.name = name; // tagname
       this.attrs = attrs; // 可能会分几类
       this.children = [];
+      this.tPath = 'root';
       // this.close = false; // 闭合了么
+    }
+
+    addChild(child) {
+      this.children.push(child);
+      // eslint-disable-next-line no-param-reassign
+      child.tPath = `${this.tPath}.${child.name}[${this.children.length - 1}]`;
     }
 
     addAttr(key, value) {
@@ -643,10 +690,15 @@
       });
       const createComp = vm.component(this.name);
       if (createComp) {
-        // console.log('createComp new one', attrs.bindGetters);
-        const vdomOfComp = createComp({ $parentVm: vm, $attrs: attrs.bindGetters });
-        // 这里应该把props整理成computed的形式
-        return vdomOfComp.$render();
+        const instanceCreator = {
+          hash: this.tPath,
+          isComponent: true,
+          createComp,
+          $attrs: attrs.bindGetters,
+          func: () => createComp({ $parentVm: vm, $attrs: attrs.bindGetters }),
+          instance: null,
+        };
+        return KElement(this.name).setComponent(instanceCreator);
       }
 
       return KElement(
@@ -724,7 +776,7 @@
           // tag start
           const [tagname, nextIdx] = getTillNextCh(idx + 1, str, [' ', '>']);
           const newTag = new TplTag(tagname);
-          stackTop.children.push(newTag);
+          stackTop.addChild(newTag);
           elStack.push(newTag);
           stackTop = newTag;
           if (str[nextIdx] === ' ') {
@@ -736,7 +788,7 @@
         } else {
           // text start
           const [newText, nextIdx] = getTillNextCh(idx, str, ['<']);
-          stackTop.children.push(new TplTag('text', { content: newText })); // 免压栈
+          stackTop.addChild(new TplTag('text', { content: newText })); // 免压栈
           idx = nextIdx;
         }
       } else if (state === 1) {
@@ -983,9 +1035,7 @@
       vm.$vdom = vm.$render.call(vm);
       // console.log('vm.$vdom',vm.$vdom);
       if (vm.$preVdom) {
-        // console.log(vm.$preVdom,vm.$vdom)
-        const result = diff(vm.$preVdom, this.$vdom);
-        // console.log('diff result', result);
+        const result = diff(vm.$preVdom, vm.$vdom);
         applyDiff(result);
       } else {
         if (vm.isRoot) {
@@ -998,19 +1048,19 @@
     };
 
     // 根节点的第一次渲染
-    if (vm.$el) {
-      // 重绘触发
-      vm.renderWatcher = new Watcher(
-        vm,
-        (() => {
-          walk(data);
-          walk(computedData);
-        }),
-        vm.render,
-      );
-      vm.render(); // 渲染
-    }
+    // if (vm.$el) {
+    // 重绘触发
+    vm.renderWatcher = new Watcher(
+      vm,
+      (() => {
+        walk(data);
+        walk(computedData);
+      }),
+      vm.render,
+    );
+    vm.render(); // 渲染
   }
+  // }
 
   // 组件
   MiniVue.component = component.create(MiniVue);

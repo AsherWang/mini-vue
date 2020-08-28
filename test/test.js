@@ -51,7 +51,8 @@ function testMiniVue() {
       },
     },
     template:
-      '<div class="virtual-container"><h3>{{name}}</h3>'
+      '<div class="virtual-container">'
+      + '<h3>{{name}}</h3>'
       + '<ul class="margin-left-10">'
       + '<li class="item" v-if="showName" style="font-weight:bold;">name: {{name}}</li>'
       + '<li class="item"><span>showName: {{showName}}</span><button style="margin-left:10px" @click="toggleShowName">toggle</button></li>'
@@ -62,7 +63,8 @@ function testMiniVue() {
       + '<li class="item">made for fun</li>'
       + '<li class="item" v-for="(h, index) in hobbies" :key="index">hobby {{index}} -> {{h}}</li>'
       + '</ul>'
-      + '<my-comp :name="name" />'
+      + '<my-comp :name="name" v-if="showName" />'
+      + '<my-comp :name="info" />'
       + '<h4>computed.dataStr</h4>'
       + '<pre style="background:lemonchiffon;padding:5px;">{{dataStr}}</pre>'
       + '</div>',

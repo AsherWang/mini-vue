@@ -75,6 +75,25 @@ function diffChildren(parentNode, oldArr, newArr, patchs = []) {
 
 // 虚拟dom的diff算法
 export function diff(node, newNode, patchs = []) {
+  if (node.isComponent && newNode.isComponent) {
+    if (node.instanceCreator.hash !== newNode.instanceCreator.hash) {
+      patchs.push({
+        type: 'REPLACE',
+        node,
+        newNode,
+      });
+    }
+    return patchs;
+  }
+  if (node.isComponent !== newNode.isComponent) {
+    // 替换节点
+    patchs.push({
+      type: 'REPLACE',
+      node,
+      newNode,
+    });
+    return patchs;
+  }
   if (node.isText && newNode.isText) {
     if (node.text !== newNode.text) {
       patchs.push({

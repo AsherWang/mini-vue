@@ -13,7 +13,14 @@ class TplTag {
     this.name = name; // tagname
     this.attrs = attrs; // 可能会分几类
     this.children = [];
+    this.tPath = 'root';
     // this.close = false; // 闭合了么
+  }
+
+  addChild(child) {
+    this.children.push(child);
+    // eslint-disable-next-line no-param-reassign
+    child.tPath = `${this.tPath}.${child.name}[${this.children.length - 1}]`;
   }
 
   addAttr(key, value) {
@@ -64,10 +71,15 @@ class TplTag {
     });
     const createComp = vm.component(this.name);
     if (createComp) {
-      // console.log('createComp new one', attrs.bindGetters);
-      const vdomOfComp = createComp({ $parentVm: vm, $attrs: attrs.bindGetters });
-      // 这里应该把props整理成computed的形式
-      return vdomOfComp.$render();
+      const instanceCreator = {
+        hash: this.tPath,
+        isComponent: true,
+        createComp,
+        $attrs: attrs.bindGetters,
+        func: () => createComp({ $parentVm: vm, $attrs: attrs.bindGetters }),
+        instance: null,
+      };
+      return El(this.name).setComponent(instanceCreator);
     }
 
     return El(
@@ -145,7 +157,7 @@ function doCompile(templateStr) {
         // tag start
         const [tagname, nextIdx] = getTillNextCh(idx + 1, str, [' ', '>']);
         const newTag = new TplTag(tagname);
-        stackTop.children.push(newTag);
+        stackTop.addChild(newTag);
         elStack.push(newTag);
         stackTop = newTag;
         if (str[nextIdx] === ' ') {
@@ -157,7 +169,7 @@ function doCompile(templateStr) {
       } else {
         // text start
         const [newText, nextIdx] = getTillNextCh(idx, str, ['<']);
-        stackTop.children.push(new TplTag('text', { content: newText })); // 免压栈
+        stackTop.addChild(new TplTag('text', { content: newText })); // 免压栈
         idx = nextIdx;
       }
     } else if (state === 1) {
