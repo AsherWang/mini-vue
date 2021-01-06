@@ -14,6 +14,7 @@ module.exports = {
   rules: {
     'class-methods-use-this': ['off'],
     'no-console': ['off'],
+    'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
   },
   // files: ['bin/*.js', 'lib/*.js'],
   // excludedFiles: ['docs/*.js'],

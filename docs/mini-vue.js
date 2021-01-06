@@ -143,25 +143,6 @@
     return new Observer(value);
   }
 
-  const touchedObjs = [];
-
-  function doWalk(obj) {
-    if (!obj || (!Array.isArray(obj) && typeof obj !== 'object') || touchedObjs.includes(obj)) {
-      return;
-    }
-    touchedObjs.push(obj);
-    if (Array.isArray(obj)) {
-      obj.forEach((v) => doWalk(v));
-    } else {
-      Object.values(obj).forEach((v) => doWalk(v));
-    }
-  }
-
-  function walk(obj) {
-    doWalk(obj);
-    touchedObjs.length = 0;
-  }
-
   /* eslint-disable no-param-reassign */
   class _Element {
     constructor(tagName, props, children) {
@@ -973,13 +954,11 @@
       assignProperties(props, vm);
     }
 
-    // assignProperties(props, vm);
-
     // 简单处理data
     let data = options.data || {};
     data = typeof options.data === 'function' ? options.data.call(vm) : data;
     observe(data);
-    vm.$data = data;
+    vm.$data = data; // 这里有问题
     assignProperties(data, vm);
 
     // 简单处理computed
@@ -1042,25 +1021,13 @@
           if (vm.$el.firstElementChild) vm.$el.firstElementChild.remove();
           vm.$el.appendChild(vm.$vdom.render());
         }
-        // vm.$el.replaceWith(vm.$vdom.render());
         vm.$preVdom = vm.$vdom;
       }
     };
 
-    // 根节点的第一次渲染
-    // if (vm.$el) {
     // 重绘触发
-    vm.renderWatcher = new Watcher(
-      vm,
-      (() => {
-        walk(data);
-        walk(computedData);
-      }),
-      vm.render,
-    );
-    vm.render(); // 渲染
+    vm.renderWatcher = new Watcher(vm, vm.render, () => undefined);
   }
-  // }
 
   // 组件
   MiniVue.component = component.create(MiniVue);

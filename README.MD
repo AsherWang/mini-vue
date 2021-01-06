@@ -86,8 +86,7 @@ const vm = new MiniVue({
 - vdom: 当初更年轻, 更简单粗暴，然后搬过来发现有bug，顺便被迫复习了一下vdom和diff
 
 ### BUGS
-- diff遇到自定义组件
-- 自定义组件销毁问题,啊..
+- 自定义组件的事件绑定和销毁问题
 
 ### PERF
 - template: 表达式求值， 啊

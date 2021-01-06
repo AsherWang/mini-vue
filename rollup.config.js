@@ -1,37 +1,37 @@
-import { terser } from "rollup-plugin-terser";
+import { terser } from 'rollup-plugin-terser';
 
 export default [
   {
-    input: "src/mini-vue/index.js",
+    input: 'src/mini-vue/index.js',
     output: [
       {
-        file: "docs/mini-vue.js",
-        name: "MiniVue",
-        format: "umd",
+        file: 'docs/mini-vue.js',
+        name: 'MiniVue',
+        format: 'umd',
       },
       {
-        file: "docs/mini-vue.min.js",
-        name: "MiniVue",
-        format: "umd",
+        file: 'docs/mini-vue.min.js',
+        name: 'MiniVue',
+        format: 'umd',
         plugins: [terser()],
       },
     ],
   },
   {
-    input: "test/test.js",
+    input: 'test/test.js',
     output: [
       {
-        file: "docs/test.js",
-        format: "umd",
+        file: 'docs/test.js',
+        format: 'umd',
       },
     ],
   },
   {
-    input: "test/test.template.js",
+    input: 'test/test.template.js',
     output: [
       {
-        file: "test/dist/test.template.js",
-        format: "umd",
+        file: 'test/dist/test.template.js',
+        format: 'umd',
       },
     ],
   },

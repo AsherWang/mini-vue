@@ -1,5 +1,5 @@
 import { observe, Watcher } from '../observer/index';
-import walk from '../observer/walk';
+// import walk from '../observer/walk';
 import { diff, applyDiff } from '../vdom/index';
 import compileTemplate from '../template/index';
 import component from './component';
@@ -73,13 +73,11 @@ function MiniVue(options) {
     assignProperties(props, vm);
   }
 
-  // assignProperties(props, vm);
-
   // 简单处理data
   let data = options.data || {};
   data = typeof options.data === 'function' ? options.data.call(vm) : data;
   observe(data);
-  vm.$data = data;
+  vm.$data = data; // 这里有问题
   assignProperties(data, vm);
 
   // 简单处理computed
@@ -141,28 +139,14 @@ function MiniVue(options) {
       if (vm.isRoot) {
         if (vm.$el.firstElementChild) vm.$el.firstElementChild.remove();
         vm.$el.appendChild(vm.$vdom.render());
-      } else {
-        // vm.$el.replaceWith(vm.$vdom.render()); // 这里就是自定义组件了
       }
-      // vm.$el.replaceWith(vm.$vdom.render());
       vm.$preVdom = vm.$vdom;
     }
   };
 
-  // 根节点的第一次渲染
-  // if (vm.$el) {
   // 重绘触发
-  vm.renderWatcher = new Watcher(
-    vm,
-    (() => {
-      walk(data);
-      walk(computedData);
-    }),
-    vm.render,
-  );
-  vm.render(); // 渲染
+  vm.renderWatcher = new Watcher(vm, vm.render, () => undefined);
 }
-// }
 
 // 组件
 MiniVue.component = component.create(MiniVue);
