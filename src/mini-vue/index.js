@@ -145,7 +145,7 @@ function MiniVue(options) {
   };
 
   // 重绘触发
-  vm.renderWatcher = new Watcher(vm, vm.render, () => undefined);
+  vm.renderWatcher = new Watcher(vm, vm.render);
 }
 
 // 组件

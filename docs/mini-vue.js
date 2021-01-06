@@ -62,9 +62,9 @@
 
     update() {
       // 触发getter收集依赖
+      const preVal = this.value;
+      this.getVal();
       if (this.cb) {
-        const preVal = this.value;
-        this.getVal();
         this.cb.call(this.vm, this.__value, preVal);
       } else {
         this.dirty = true;
@@ -1026,7 +1026,7 @@
     };
 
     // 重绘触发
-    vm.renderWatcher = new Watcher(vm, vm.render, () => undefined);
+    vm.renderWatcher = new Watcher(vm, vm.render);
   }
 
   // 组件
