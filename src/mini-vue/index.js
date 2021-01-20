@@ -146,6 +146,8 @@ function MiniVue(options) {
 
   // 重绘触发
   vm.renderWatcher = new Watcher(vm, vm.render);
+
+  vm.render();
 }
 
 // 组件
